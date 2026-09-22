@@ -1,0 +1,287 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum UserIntent {
+  HAVE_ROOM
+  NEED_ROOM
+  FIND_FLATMATES
+  OTHER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  NON_BINARY
+  PREFER_NOT_TO_SAY
+}
+
+enum WorkMode {
+  OFFICE
+  HYBRID
+  REMOTE
+  STUDENT
+}
+
+enum FoodPreference {
+  VEGETARIAN
+  NON_VEGETARIAN
+  BOTH
+  OTHER
+}
+
+enum SmokingPreference {
+  NO
+  YES
+  OUTSIDE_ONLY
+}
+
+enum AlcoholPreference {
+  NO
+  SOCIALLY
+  YES
+}
+
+enum SharingPermission {
+  YES
+  NO
+  REQUIRES_APPROVAL
+  UNKNOWN
+}
+
+enum PropertyType {
+  PG
+  APARTMENT
+  INDEPENDENT
+  STUDIO
+}
+
+enum RoomType {
+  SINGLE
+  DOUBLE
+  SHARED
+}
+
+enum MatchStatus {
+  DISCOVERED
+  INTEREST_SENT
+  MATCHED
+  CHAT_STARTED
+}
+
+enum MatchReasonKind {
+  POSITIVE
+  DIFFERENCE
+}
+
+enum RoomStatus {
+  ACTIVE
+  CLOSED
+}
+
+model User {
+  id              String     @id @default(cuid())
+  email           String?    @unique
+  phone           String?    @unique
+  passwordHash    String?
+  role            UserRole   @default(USER)
+  status          UserStatus @default(ACTIVE)
+  emailVerified   Boolean    @default(false)
+  phoneVerified   Boolean    @default(false)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  profile         Profile?
+  preferences     Preference?
+  languages       UserLanguage[]
+  accommodations  Accommodation[]
+  interestsFrom   Interest[]     @relation("InterestFrom")
+  interestsTo     Interest[]     @relation("InterestTo")
+  matchesA        Match[]        @relation("MatchA")
+  matchesB        Match[]        @relation("MatchB")
+  conversationsA  Conversation[] @relation("ConversationA")
+  conversationsB  Conversation[] @relation("ConversationB")
+  messages        Message[]
+  blocksFrom      Block[]        @relation("BlockFrom")
+  blocksTo        Block[]        @relation("BlockTo")
+}
+
+model Profile {
+  id           String      @id @default(cuid())
+  userId       String      @unique
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName    String
+  age          Int?
+  gender       Gender?
+  occupation   String?
+  jobTitle     String?
+  bio          String?
+  photoUrl     String?
+  city         String      @default("Bengaluru")
+  workLocation String?
+  workMode     WorkMode?
+  intent       UserIntent?
+  onboardingDone Boolean   @default(false)
+}
+
+model Preference {
+  id                 String              @id @default(cuid())
+  userId             String              @unique
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  minBudget          Int?
+  maxBudget          Int?
+  moveInDate         DateTime?
+  sleepStart         Int?
+  sleepEnd           Int?
+  cleanliness        Int?
+  noiseTolerance     Int?
+  cookingFrequency   Int?
+  guestFrequency     Int?
+  foodPreference     FoodPreference?
+  smokingPreference  SmokingPreference?
+  smokingRequired    Boolean             @default(false)
+  alcoholPreference  AlcoholPreference?
+  pets               Boolean?
+  languageMatters    Boolean             @default(false)
+  preferredGenders   Gender[]
+  localities         String[]
+}
+
+model UserLanguage {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  language String
+
+  @@unique([userId, language])
+}
+
+model Accommodation {
+  id                 String             @id @default(cuid())
+  ownerUserId        String
+  owner              User               @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  propertyType       PropertyType
+  city               String             @default("Bengaluru")
+  locality           String
+  exactAddress       String?
+  latitude           Float?
+  longitude          Float?
+  monthlyRent        Int
+  roommateContribution Int
+  deposit            Int?
+  availableFrom      DateTime
+  sharingPermission  SharingPermission
+  status             RoomStatus         @default(ACTIVE)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  rooms              Room[]
+}
+
+model Room {
+  id               String        @id @default(cuid())
+  accommodationId  String
+  accommodation    Accommodation @relation(fields: [accommodationId], references: [id], onDelete: Cascade)
+  roomType         RoomType
+  capacity         Int           @default(2)
+  currentOccupants Int           @default(1)
+  availableSlots   Int           @default(1)
+  furnished        Boolean       @default(true)
+  photos           String[]
+  notes            String?
+  amenities        RoomAmenity[]
+}
+
+model RoomAmenity {
+  id     String @id @default(cuid())
+  roomId String
+  room   Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  name   String
+
+  @@unique([roomId, name])
+}
+
+model Interest {
+  id         String   @id @default(cuid())
+  fromUserId String
+  toUserId   String
+  roomId     String?
+  fromUser   User     @relation("InterestFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser     User     @relation("InterestTo", fields: [toUserId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([fromUserId, toUserId])
+}
+
+model Match {
+  id              String        @id @default(cuid())
+  userAId         String
+  userBId         String
+  score           Int
+  status          MatchStatus   @default(MATCHED)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  userA           User          @relation("MatchA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB           User          @relation("MatchB", fields: [userBId], references: [id], onDelete: Cascade)
+  reasons         MatchReason[]
+  conversation    Conversation?
+
+  @@unique([userAId, userBId])
+}
+
+model MatchReason {
+  id          String          @id @default(cuid())
+  matchId     String
+  match       Match           @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  factor      String
+  kind        MatchReasonKind
+  score       Float
+  description String
+}
+
+model Conversation {
+  id        String    @id @default(cuid())
+  matchId   String    @unique
+  match     Match     @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  userAId   String
+  userBId   String
+  userA     User      @relation("ConversationA", fields: [userAId], references: [id])
+  userB     User      @relation("ConversationB", fields: [userBId], references: [id])
+  createdAt DateTime  @default(now())
+  messages  Message[]
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  body           String
+  createdAt      DateTime     @default(now())
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  fromUserId String
+  toUserId  String
+  fromUser  User     @relation("BlockFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser    User     @relation("BlockTo", fields: [toUserId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([fromUserId, toUserId])
+}

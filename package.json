@@ -1,0 +1,19 @@
+{
+  "name": "find-my-roommate",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "docker compose up --build",
+    "dev:web": "npm run dev -w @fmr/web",
+    "dev:api": "npm run start:dev -w @fmr/api",
+    "db:migrate": "npm run prisma:migrate -w @fmr/api",
+    "db:seed": "npm run prisma:seed -w @fmr/api",
+    "db:generate": "npm run prisma:generate -w @fmr/api"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

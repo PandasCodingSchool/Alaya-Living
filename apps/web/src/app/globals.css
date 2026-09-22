@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #1A1014;
+  background: #FFF6F0;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(900px 420px at 100% -10%, rgba(244, 63, 122, 0.14), transparent 55%),
+    radial-gradient(700px 360px at -10% 110%, rgba(232, 184, 74, 0.12), transparent 50%),
+    #FFF6F0;
+}
+
+input,
+select,
+textarea,
+button {
+  font: inherit;
+}
+
+@layer components {
+  .field {
+    @apply w-full rounded-full border border-sand bg-white px-4 py-2.5 text-[15px] outline-none transition focus:border-clay focus:ring-2 focus:ring-clay/20;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold transition;
+  }
+
+  .btn-primary {
+    @apply btn bg-clay text-white hover:bg-[#dd2d6b];
+  }
+
+  .btn-dark {
+    @apply btn bg-night text-white hover:bg-ink;
+  }
+
+  .btn-ghost {
+    @apply btn border border-sand bg-white text-ink hover:border-clay/40;
+  }
+
+  .chip {
+    @apply inline-flex items-center rounded-full bg-[#FFE8F0] px-2.5 py-1 text-xs font-medium text-ink/80;
+  }
+
+  .panel {
+    @apply rounded-[1.5rem] border border-sand/70 bg-card shadow-panel;
+  }
+
+  .story-ring {
+    background: conic-gradient(from 210deg, #F58529, #F43F7A, #A855F7, #F58529);
+  }
+}
