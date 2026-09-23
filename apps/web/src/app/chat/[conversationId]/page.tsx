@@ -111,7 +111,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[70vh] max-w-2xl flex-col px-5 py-8">
+    <div className="mx-auto flex min-h-[calc(100dvh-10rem)] max-w-2xl flex-col px-4 py-6 sm:px-5 sm:py-8">
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Chat with {otherName}</h1>
@@ -133,9 +133,9 @@ export default function ChatPage() {
         ))}
         {!messages.length && <p className="text-sm text-muted">No messages yet. Say hello.</p>}
       </div>
-      <form onSubmit={send} className="mt-6 flex gap-3">
-        <input value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write a message" className="field flex-1" />
-        <button className="btn-primary">Send</button>
+      <form onSubmit={send} className="sticky bottom-0 mt-6 flex gap-2 bg-paper/95 py-3 backdrop-blur sm:gap-3">
+        <input value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write a message" className="field min-w-0 flex-1" />
+        <button className="btn-primary shrink-0 px-4">Send</button>
       </form>
       {error && <p className="mt-3 text-sm text-clay">{error}</p>}
     </div>

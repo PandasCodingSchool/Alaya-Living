@@ -43,6 +43,9 @@ export interface Profile {
   languageMatters?: boolean;
   smokingRequired?: boolean;
   preferredGenders?: string[];
+  preferredRadiusKm?: number;
+  distanceKm?: number | null;
+  distanceLabel?: string | null;
   onboardingDone?: boolean;
   email?: string | null;
   phone?: string | null;
@@ -68,6 +71,10 @@ export interface Room {
   furnished: boolean;
   notes?: string | null;
   owner: Profile;
+  latitude?: number | null;
+  longitude?: number | null;
+  distanceKm?: number | null;
+  distanceLabel?: string | null;
   compatibility?: Compatibility;
 }
 

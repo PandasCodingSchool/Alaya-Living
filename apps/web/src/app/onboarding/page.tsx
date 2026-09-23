@@ -2,8 +2,10 @@
 
 import { LANGUAGES, LOCALITIES, TECH_PARKS, officeLocalities } from '@fmr/shared';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { api } from '@/lib/api';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
+import { Avatar } from '@/components/avatar';
+import { api, apiUpload } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 
 const steps = ['Intent', 'About you', 'Location', 'Budget', 'Lifestyle', 'Languages'];
@@ -13,6 +15,9 @@ export default function OnboardingPage() {
   const { user, refresh } = useAuth();
   const [step, setStep] = useState(0);
   const [error, setError] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const photoRef = useRef<HTMLInputElement>(null);
+  const editing = !!user?.onboardingDone;
   const existingName = user?.name && user.name !== 'Member' ? user.name : '';
   const [form, setForm] = useState({
     intent: 'NEED_ROOM',
@@ -24,6 +29,7 @@ export default function OnboardingPage() {
     workLocation: 'RMZ Ecoworld',
     workMode: 'HYBRID',
     localities: ['Bellandur'] as string[],
+    preferredRadiusKm: 5,
     minBudget: 8000,
     maxBudget: 12000,
     moveInDate: '2026-10-01',
@@ -55,6 +61,7 @@ export default function OnboardingPage() {
       workMode: user.workMode ?? current.workMode,
       intent: user.intent ?? current.intent,
       localities: user.localities.length ? user.localities : current.localities,
+      preferredRadiusKm: user.preferredRadiusKm ?? current.preferredRadiusKm,
       minBudget: user.minBudget ?? current.minBudget,
       maxBudget: user.maxBudget ?? current.maxBudget,
       moveInDate: user.moveInDate ? user.moveInDate.slice(0, 10) : current.moveInDate,
@@ -111,23 +118,53 @@ export default function OnboardingPage() {
           alcoholPreference: form.alcoholPreference,
           pets: form.pets,
           localities: form.localities,
+          preferredRadiusKm: form.preferredRadiusKm,
           languages: form.languages,
           languageMatters: form.languageMatters,
         }),
       });
       await refresh();
-      router.push(form.intent === 'HAVE_ROOM' ? '/rooms/new' : '/discover');
+      router.push(editing ? '/profile' : form.intent === 'HAVE_ROOM' ? '/rooms/new' : '/discover');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save profile');
     }
   }
 
+  function leave() {
+    if (editing) router.push('/profile');
+    else if (typeof window !== 'undefined' && window.history.length > 1) router.back();
+    else router.push('/discover');
+  }
+
+  async function onPhoto(file?: File) {
+    if (!file) return;
+    setUploading(true);
+    setError('');
+    try {
+      await apiUpload('/users/me/photo', file);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not upload photo');
+    } finally {
+      setUploading(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-xl px-5 py-12">
-      <p className="font-mono text-[11px] text-muted">
+      <div className="flex items-center justify-between">
+        <button type="button" onClick={leave} className="inline-flex items-center gap-2 text-sm text-muted hover:text-ink">
+          <ArrowLeft className="h-4 w-4" />
+          {editing ? 'Back to profile' : 'Exit'}
+        </button>
+        <button type="button" onClick={leave} className="text-sm text-muted hover:text-ink">
+          Cancel
+        </button>
+      </div>
+      <p className="mt-6 font-mono text-[11px] text-muted">
         STEP {step + 1}/{steps.length} · {steps[step].toUpperCase()}
       </p>
-      <h1 className="mt-3 text-3xl font-semibold">How you actually live</h1>
+      <h1 className="mt-3 text-3xl font-semibold">{editing ? 'Edit preferences' : 'How you actually live'}</h1>
       {existingName && (
         <p className="mt-2 text-sm text-muted">Hi {existingName} — we already have your name from sign-up.</p>
       )}
@@ -154,6 +191,16 @@ export default function OnboardingPage() {
 
       {step === 1 && (
         <div className="mt-8 space-y-4">
+          <div className="flex items-center gap-4">
+            <Avatar name={form.firstName || user?.name || 'Member'} photoUrl={user?.photoUrl} size={72} />
+            <div>
+              <button type="button" onClick={() => photoRef.current?.click()} className="btn-ghost" disabled={uploading}>
+                {uploading ? 'Uploading…' : user?.photoUrl ? 'Change photo' : 'Upload photo'}
+              </button>
+              <p className="mt-2 text-xs text-muted">Shown on Discover and Matches.</p>
+              <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={(event) => onPhoto(event.target.files?.[0])} />
+            </div>
+          </div>
           {!existingName && (
             <input className="field" placeholder="First name" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
           )}
@@ -180,7 +227,7 @@ export default function OnboardingPage() {
         <div className="mt-8 space-y-5">
           <div>
             <p className="text-sm font-medium">Where do you work?</p>
-            <p className="mt-1 text-xs text-muted">We rank roommates near your tech park first, then farther corridors.</p>
+            <p className="mt-1 text-xs text-muted">Rooms and people are ranked by km from this office, then farther parks.</p>
             <select
               className="field mt-2"
               value={form.workLocation}
@@ -214,6 +261,21 @@ export default function OnboardingPage() {
                 </button>
               ))}
             </div>
+          </div>
+          <div>
+            <p className="text-sm font-medium">Show rooms within</p>
+            <p className="mt-1 text-xs text-muted">Default 5 km from your office. You can change this on Discover.</p>
+            <select
+              className="field mt-2"
+              value={form.preferredRadiusKm}
+              onChange={(e) => setForm({ ...form, preferredRadiusKm: Number(e.target.value) })}
+            >
+              <option value={2}>2 km</option>
+              <option value={5}>5 km</option>
+              <option value={10}>10 km</option>
+              <option value={15}>15 km</option>
+              <option value={0}>All of Bengaluru</option>
+            </select>
           </div>
         </div>
       )}
@@ -290,17 +352,22 @@ export default function OnboardingPage() {
       )}
 
       {error && <p className="mt-4 text-sm text-clay">{error}</p>}
-      <div className="mt-8 flex justify-between">
-        <button disabled={step === 0} onClick={() => setStep(step - 1)} className="text-sm text-ink/50">
-          Back
-        </button>
+      <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-4">
+          <button disabled={step === 0} onClick={() => setStep(step - 1)} className="text-sm text-ink/50 disabled:opacity-40">
+            Back
+          </button>
+          <button type="button" onClick={leave} className="text-sm text-muted hover:text-ink">
+            Cancel
+          </button>
+        </div>
         {step < steps.length - 1 ? (
           <button onClick={() => setStep(step + 1)} className="btn-dark">
             Next
           </button>
         ) : (
           <button onClick={finish} className="btn-primary">
-            See matches
+            {editing ? 'Save preferences' : 'See matches'}
           </button>
         )}
       </div>

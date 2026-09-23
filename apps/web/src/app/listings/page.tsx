@@ -27,7 +27,7 @@ export default function ListingsPage() {
         ])];
         let candidates: Room[] = [];
         try {
-          candidates = await api<Room[]>('/discover/rooms');
+          candidates = await api<Room[]>(`/discover/rooms?radiusKm=${user.preferredRadiusKm ?? 5}&origin=office`);
         } catch {
           candidates = [];
         }
@@ -59,11 +59,13 @@ export default function ListingsPage() {
   const area = [...new Set([...user.localities, ...mine.map((room) => room.locality)])].join(', ') || 'your corridors';
 
   return (
-    <div className="mx-auto max-w-5xl px-5 py-10">
+    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-5 sm:py-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold">Rooms</h1>
-          <p className="mt-1 text-sm text-muted">Your listings, plus available rooms near {area}.</p>
+          <p className="mt-1 text-sm text-muted">
+            Your listing, plus rooms within {user.preferredRadiusKm || 5} km of your office in {area}.
+          </p>
         </div>
         {mine[0] ? (
           <Link href={`/rooms/${mine[0].id}/edit`} className="btn-primary">

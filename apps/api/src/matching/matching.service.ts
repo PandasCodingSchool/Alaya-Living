@@ -1,4 +1,14 @@
 import { Injectable } from '@nestjs/common';
+import {
+  DEFAULT_RADIUS_KM,
+  coordsForLocality,
+  coordsForOffice,
+  distanceKm,
+  distanceLabel,
+  originCoords,
+  type GeoOrigin,
+  withinRadius,
+} from '../lib/geo';
 import { officeProximity } from '../lib/offices';
 import {
   MatchablePerson,
@@ -42,11 +52,16 @@ function toMatchable(user: FullUser): MatchablePerson {
   };
 }
 
+export interface GeoQuery {
+  radiusKm?: number;
+  origin?: GeoOrigin;
+}
+
 @Injectable()
 export class MatchingService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async people(viewerId: string) {
+  async people(viewerId: string, query: GeoQuery = {}) {
     const viewer = await this.requireUser(viewerId);
     const blocked = await this.blockedIds(viewerId);
     const candidates = await this.prisma.user.findMany({
@@ -59,20 +74,32 @@ export class MatchingService {
     });
 
     const viewerM = toMatchable(viewer);
+    const { radiusKm, origin, from } = this.geoContext(viewer, query);
     return candidates
       .filter((c) => passesHardFilters(viewerM, toMatchable(c)))
       .map((c) => {
-        const compatibility = scorePeople(viewerM, toMatchable(c));
-        return { ...toPublicProfile(c), compatibility };
+        const km = distanceKm(
+          from,
+          coordsForOffice(c.profile?.workLocation) || coordsForLocality(c.preferences?.localities[0]),
+        );
+        return {
+          ...toPublicProfile(c),
+          compatibility: scorePeople(viewerM, toMatchable(c)),
+          distanceKm: km,
+          distanceLabel: distanceLabel(km, origin),
+        };
       })
+      .filter((row) => withinRadius(row.distanceKm, radiusKm))
       .sort((a, b) => {
+        const near = (a.distanceKm ?? 999) - (b.distanceKm ?? 999);
+        if (near !== 0) return near;
         const office = officeProximity(viewerM.workLocation, b.workLocation) - officeProximity(viewerM.workLocation, a.workLocation);
         if (office !== 0) return office;
         return b.compatibility.score - a.compatibility.score;
       });
   }
 
-  async rooms(viewerId: string) {
+  async rooms(viewerId: string, query: GeoQuery = {}) {
     const viewer = await this.requireUser(viewerId);
     const blocked = await this.blockedIds(viewerId);
     const rooms = await this.prisma.room.findMany({
@@ -89,6 +116,7 @@ export class MatchingService {
     });
 
     const viewerM = toMatchable(viewer);
+    const { radiusKm, origin, from } = this.geoContext(viewer, query);
     return rooms
       .map((room) => {
         const owner = toMatchable(room.accommodation.owner);
@@ -103,11 +131,23 @@ export class MatchingService {
         return { room, matchableRoom };
       })
       .filter(({ matchableRoom }) => passesRoomHardFilters(viewerM, matchableRoom))
-      .map(({ room, matchableRoom }) => ({
-        ...toPublicRoom(room),
-        compatibility: scoreRoom(viewerM, matchableRoom),
-      }))
+      .map(({ room, matchableRoom }) => {
+        const pin =
+          room.accommodation.latitude != null && room.accommodation.longitude != null
+            ? { lat: room.accommodation.latitude, lng: room.accommodation.longitude }
+            : coordsForLocality(room.accommodation.locality);
+        const km = distanceKm(from, pin);
+        return {
+          ...toPublicRoom(room),
+          compatibility: scoreRoom(viewerM, matchableRoom),
+          distanceKm: km,
+          distanceLabel: distanceLabel(km, origin),
+        };
+      })
+      .filter((row) => withinRadius(row.distanceKm, radiusKm))
       .sort((a, b) => {
+        const near = (a.distanceKm ?? 999) - (b.distanceKm ?? 999);
+        if (near !== 0) return near;
         const office =
           officeProximity(viewerM.workLocation, b.owner.workLocation) -
           officeProximity(viewerM.workLocation, a.owner.workLocation);
@@ -122,6 +162,17 @@ export class MatchingService {
       ...toPublicProfile(other),
       compatibility: scorePeople(toMatchable(viewer), toMatchable(other)),
     };
+  }
+
+  private geoContext(viewer: FullUser, query: GeoQuery) {
+    const origin: GeoOrigin = query.origin === 'home' ? 'home' : 'office';
+    const radiusKm = query.radiusKm ?? viewer.preferences?.preferredRadiusKm ?? DEFAULT_RADIUS_KM;
+    const from = originCoords({
+      workLocation: viewer.profile?.workLocation,
+      localities: viewer.preferences?.localities ?? [],
+      origin,
+    });
+    return { radiusKm, origin, from };
   }
 
   private async requireUser(id: string) {

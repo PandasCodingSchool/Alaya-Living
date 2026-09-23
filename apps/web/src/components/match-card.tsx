@@ -1,11 +1,16 @@
 import Link from 'next/link';
 import { BadgeCheck, Briefcase, MapPin, Moon, Wallet } from 'lucide-react';
+import { useAuth } from '@/lib/auth';
 import type { Profile } from '@/lib/types';
 import { hourLabel, inr } from '@/lib/format';
 import { Avatar } from './avatar';
 import { Reasons } from './reasons';
+import { SaveButton } from './save-button';
 
 export function MatchCard({ person }: { person: Profile }) {
+  const { user } = useAuth();
+  const mine = user?.id === person.id;
+
   return (
     <article className="panel overflow-hidden">
       <div className="p-5">
@@ -17,12 +22,15 @@ export function MatchCard({ person }: { person: Profile }) {
               <p className="text-sm text-muted">{[person.age, person.occupation].filter(Boolean).join(' · ')}</p>
             </div>
           </div>
-          {person.compatibility && (
-            <div className="text-right">
-              <p className="text-lg font-semibold text-clay">{person.compatibility.score}%</p>
-              <p className="text-[11px] text-muted">match</p>
-            </div>
-          )}
+          <div className="flex items-start gap-1">
+            {person.compatibility && (
+              <div className="text-right">
+                <p className="text-lg font-semibold text-clay">{person.compatibility.score}%</p>
+                <p className="text-[11px] text-muted">match</p>
+              </div>
+            )}
+            <SaveButton kind="PERSON" targetId={person.id} hide={mine} variant="icon" />
+          </div>
         </div>
         <div className="mt-4 flex flex-wrap gap-1.5">
           {person.minBudget && person.maxBudget && (
@@ -30,6 +38,9 @@ export function MatchCard({ person }: { person: Profile }) {
           )}
           {person.workLocation && (
             <span className="chip"><Briefcase className="mr-1 h-3 w-3" />{person.workLocation}</span>
+          )}
+          {person.distanceLabel && (
+            <span className="chip text-clay"><MapPin className="mr-1 h-3 w-3" />{person.distanceLabel}</span>
           )}
           {person.localities.slice(0, 2).map((locality) => (
             <span key={locality} className="chip"><MapPin className="mr-1 h-3 w-3" />{locality}</span>

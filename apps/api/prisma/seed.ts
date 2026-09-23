@@ -745,12 +745,23 @@ async function main() {
     created[person.firstName.toLowerCase()] = { id: user.id, email: user.email! };
 
     if (person.room) {
+      const pin = {
+        Bellandur: { lat: 12.9256, lng: 77.6763 },
+        Kadubeesanahalli: { lat: 12.9365, lng: 77.6953 },
+        Marathahalli: { lat: 12.9592, lng: 77.6974 },
+        Whitefield: { lat: 12.9698, lng: 77.7499 },
+        HSR: { lat: 12.9116, lng: 77.6389 },
+        Koramangala: { lat: 12.9352, lng: 77.6245 },
+        'Electronic City': { lat: 12.839, lng: 77.677 },
+      }[person.room.locality];
       await prisma.accommodation.create({
         data: {
           ownerUserId: user.id,
           propertyType: person.room.propertyType,
           locality: person.room.locality,
           exactAddress: person.room.exactAddress,
+          latitude: pin?.lat,
+          longitude: pin?.lng,
           monthlyRent: person.room.monthlyRent,
           roommateContribution: person.room.roommateContribution,
           deposit: person.room.deposit,

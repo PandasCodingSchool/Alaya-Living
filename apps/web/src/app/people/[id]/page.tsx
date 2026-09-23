@@ -6,13 +6,16 @@ import { useEffect, useState } from 'react';
 import { Avatar } from '@/components/avatar';
 import { ContactReveal } from '@/components/contact-reveal';
 import { Reasons } from '@/components/reasons';
+import { SaveButton } from '@/components/save-button';
 import { api } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 import { hourLabel, inr, prettyEnum } from '@/lib/format';
 import type { InterestState, Profile } from '@/lib/types';
 
 export default function PersonPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const { user } = useAuth();
   const [person, setPerson] = useState<Profile | null>(null);
   const [state, setState] = useState<InterestState | null>(null);
   const [error, setError] = useState('');
@@ -46,13 +49,13 @@ export default function PersonPage() {
   if (!person) return <p className="px-5 py-16 text-center text-muted">{error || 'Loading…'}</p>;
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-10">
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-5 sm:py-10">
       <div className="panel p-6">
         <div className="flex items-start justify-between gap-4">
           <div className="flex gap-4">
             <Avatar name={person.name} photoUrl={person.photoUrl} size={72} />
             <div>
-              <h1 className="text-3xl font-semibold">{person.name}</h1>
+              <h1 className="text-2xl font-semibold sm:text-3xl">{person.name}</h1>
               <p className="mt-2 text-sm text-muted">{[person.age, person.occupation, person.workMode && prettyEnum(person.workMode)].filter(Boolean).join(' · ')}</p>
             </div>
           </div>
@@ -80,6 +83,7 @@ export default function PersonPage() {
           <button onClick={interest} className="btn-primary">
             {state?.matched ? 'Open chat' : state?.interested ? 'Interest sent' : 'Interested'}
           </button>
+          <SaveButton kind="PERSON" targetId={person.id} hide={user?.id === person.id} variant="label" />
           {state?.conversationId && (
             <Link href={`/chat/${state.conversationId}`} className="btn-ghost">
               Chat

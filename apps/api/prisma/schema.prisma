@@ -94,6 +94,11 @@ enum RoomStatus {
   CLOSED
 }
 
+enum BookmarkKind {
+  PERSON
+  ROOM
+}
+
 model User {
   id              String     @id @default(cuid())
   email           String?    @unique
@@ -119,6 +124,7 @@ model User {
   messages        Message[]
   blocksFrom      Block[]        @relation("BlockFrom")
   blocksTo        Block[]        @relation("BlockTo")
+  bookmarks       Bookmark[]
 }
 
 model Profile {
@@ -160,6 +166,7 @@ model Preference {
   languageMatters    Boolean             @default(false)
   preferredGenders   Gender[]
   localities         String[]
+  preferredRadiusKm  Int                 @default(5)
 }
 
 model UserLanguage {
@@ -273,6 +280,17 @@ model Message {
   sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
   body           String
   createdAt      DateTime     @default(now())
+}
+
+model Bookmark {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      BookmarkKind
+  targetId  String
+  createdAt DateTime     @default(now())
+
+  @@unique([userId, kind, targetId])
 }
 
 model Block {

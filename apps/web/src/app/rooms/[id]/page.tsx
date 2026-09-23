@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { Avatar } from '@/components/avatar';
 import { ContactReveal } from '@/components/contact-reveal';
 import { Reasons } from '@/components/reasons';
+import { SaveButton } from '@/components/save-button';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { inr, prettyEnum } from '@/lib/format';
@@ -43,7 +44,7 @@ export default function RoomPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-10">
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-5 sm:py-10">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={roomPhotoFor(room.locality, room.photos)} alt={`${room.locality} room`} className="mb-3 h-64 w-full rounded-[1.5rem] object-cover" />
       {room.photos.length > 1 && (
@@ -55,7 +56,7 @@ export default function RoomPage() {
         </div>
       )}
       <p className="text-sm text-ink/50">{room.city} · {room.locality}</p>
-      <h1 className="mt-2 text-3xl font-semibold">{inr(room.roommateContribution)} / person</h1>
+      <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">{inr(room.roommateContribution)} / person</h1>
       <p className="mt-2 text-ink/60">
         Full rent {inr(room.monthlyRent)} · {prettyEnum(room.roomType)} · {prettyEnum(room.propertyType)}
       </p>
@@ -79,7 +80,7 @@ export default function RoomPage() {
         </div>
       </div>
       {!mine && <ContactReveal userId={room.owner.id} matched={!!state?.matched} />}
-      <div className="mt-8 flex gap-3">
+      <div className="mt-8 flex flex-wrap gap-3">
         {mine ? (
           <Link href={`/rooms/${room.id}/edit`} className="btn-dark">Edit listing</Link>
         ) : (
@@ -87,6 +88,7 @@ export default function RoomPage() {
             {state?.matched ? 'Open chat' : state?.interested ? 'Interest sent' : 'Interested'}
           </button>
         )}
+        <SaveButton kind="ROOM" targetId={room.id} hide={mine} variant="label" />
       </div>
     </div>
   );

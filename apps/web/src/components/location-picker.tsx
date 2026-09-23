@@ -48,7 +48,7 @@ export function LocationPicker() {
         type="button"
         onClick={() => setOpen((value) => !value)}
         disabled={saving}
-        className="inline-flex max-w-[11rem] items-center gap-1 rounded-full bg-[#FFE8F0] px-3 py-1.5 text-xs font-medium text-ink/80 hover:bg-[#FFD6E4]"
+        className="inline-flex max-w-[7.5rem] items-center gap-1 rounded-full bg-[#FFE8F0] px-2.5 py-1.5 text-xs font-medium text-ink/80 hover:bg-[#FFD6E4] sm:max-w-[11rem] sm:px-3"
         aria-expanded={open}
         aria-haspopup="listbox"
       >

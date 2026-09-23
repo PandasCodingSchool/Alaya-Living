@@ -159,4 +159,11 @@ export class UpdatePreferencesDto {
   @IsArray()
   @IsString({ each: true })
   languages?: string[];
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(50)
+  preferredRadiusKm?: number;
 }

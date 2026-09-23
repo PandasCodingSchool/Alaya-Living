@@ -1,6 +1,7 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { coordsForLocality } from '../lib/geo';
 import { publicMediaUrl } from '../lib/media-url';
 import { StorageService } from '../storage/storage.service';
 import { toPublicProfile, userInclude } from '../users/user.mapper';
@@ -28,6 +29,8 @@ export function toPublicRoom(room: {
   accommodation: {
     locality: string;
     city: string;
+    latitude: number | null;
+    longitude: number | null;
     propertyType: string;
     monthlyRent: number;
     roommateContribution: number;
@@ -41,6 +44,8 @@ export function toPublicRoom(room: {
     id: room.id,
     locality: room.accommodation.locality,
     city: room.accommodation.city,
+    latitude: room.accommodation.latitude,
+    longitude: room.accommodation.longitude,
     propertyType: room.accommodation.propertyType,
     roomType: room.roomType,
     monthlyRent: room.accommodation.monthlyRent,
@@ -75,12 +80,15 @@ export class RoomsService {
       throw new ConflictException('You can list only one room. Edit your existing listing instead.');
     }
 
+    const pin = coordsForLocality(dto.locality);
     const accommodation = await this.prisma.accommodation.create({
       data: {
         ownerUserId: user.id,
         propertyType: dto.propertyType,
         locality: dto.locality,
         exactAddress: dto.exactAddress,
+        latitude: pin?.lat,
+        longitude: pin?.lng,
         monthlyRent: dto.monthlyRent,
         roommateContribution: dto.roommateContribution,
         deposit: dto.deposit,
@@ -128,12 +136,15 @@ export class RoomsService {
     if (!room) throw new NotFoundException('Room not found');
     if (room.accommodation.ownerUserId !== user.id) throw new ForbiddenException();
 
+    const pin = coordsForLocality(dto.locality);
     await this.prisma.accommodation.update({
       where: { id: room.accommodationId },
       data: {
         propertyType: dto.propertyType,
         locality: dto.locality,
         exactAddress: dto.exactAddress,
+        latitude: pin?.lat,
+        longitude: pin?.lng,
         monthlyRent: dto.monthlyRent,
         roommateContribution: dto.roommateContribution,
         deposit: dto.deposit,

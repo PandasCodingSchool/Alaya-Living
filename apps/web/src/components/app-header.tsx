@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { Compass, Heart, Home, MessageCircle, Plus } from 'lucide-react';
+import { Bookmark, Compass, Heart, Home, Menu, MessageCircle, Plus, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useInbox } from '@/lib/inbox';
@@ -47,7 +47,7 @@ export function AppHeader() {
 
   return (
     <header className="sticky top-0 z-20 border-b border-sand/80 bg-white/85 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-5">
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-3 sm:gap-4 sm:px-5">
         <Logo href={user ? '/discover' : '/'} />
         <LocationPicker />
 
@@ -81,6 +81,15 @@ export function AppHeader() {
 
         {user ? (
           <div className="flex items-center gap-2">
+            <Link
+              href="/saved"
+              aria-label="Saved"
+              className={`grid h-10 w-10 place-items-center rounded-full ${
+                pathname.startsWith('/saved') ? 'bg-[#FFE8F0] text-clay' : 'text-muted hover:bg-[#FFF1F5] hover:text-ink'
+              }`}
+            >
+              <Bookmark className="h-4 w-4" />
+            </Link>
             <Link href={listingId ? `/rooms/${listingId}/edit` : '/rooms/new'} className="btn-primary hidden h-10 px-4 sm:inline-flex">
               <Plus className="mr-1 h-4 w-4" />
               {listingId ? 'Edit listing' : 'List a room'}
@@ -103,6 +112,9 @@ export function AppHeader() {
                   <Link href="/profile" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-2 text-sm hover:bg-[#FFF1F5]">
                     View profile
                   </Link>
+                  <Link href="/saved" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-2 text-sm hover:bg-[#FFF1F5]">
+                    Saved
+                  </Link>
                   <Link
                     href={listingId ? `/rooms/${listingId}/edit` : '/rooms/new'}
                     onClick={() => setOpen(false)}
@@ -124,15 +136,15 @@ export function AppHeader() {
             </div>
           </div>
         ) : (
-          <div className="ml-auto flex items-center gap-3 text-sm">
+          <div className="ml-auto flex items-center gap-2 text-sm sm:gap-3">
             <Link href="/login" className="text-muted">Sign in</Link>
-            <Link href="/register" className="btn-primary">Start matching</Link>
+            <Link href="/register" className="btn-primary px-3 sm:px-5">Start matching</Link>
           </div>
         )}
       </div>
 
       {user && (
-        <nav className="flex items-center justify-around border-t border-sand/70 px-2 py-2 md:hidden">
+        <nav className="flex items-center justify-around border-t border-sand/70 px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden">
           {appLinks.map((link) => {
             const active = pathname.startsWith(link.href);
             return (
@@ -158,19 +170,61 @@ export function AppHeader() {
   );
 }
 
+const marketingLinks = [
+  { href: '/#how-it-works', label: 'How it works' },
+  { href: '/stories', label: 'Stories' },
+  { href: '/faq', label: 'FAQ' },
+  { href: '/#safety', label: 'Safety' },
+];
+
 export function MarketingHeader() {
+  const [open, setOpen] = useState(false);
+
   return (
     <header className="sticky top-0 z-20 border-b border-white/10 bg-night/90 text-white backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-5">
+      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 sm:px-5">
         <Logo href="/" light />
-        <nav className="flex items-center gap-5 text-sm">
-          <a href="#how-it-works" className="hidden text-white/70 hover:text-white md:inline">How it works</a>
-          <a href="#features" className="hidden text-white/70 hover:text-white md:inline">Why us</a>
-          <a href="#safety" className="hidden text-white/70 hover:text-white md:inline">Safety</a>
+        <nav className="hidden items-center gap-5 text-sm lg:flex">
+          {marketingLinks.map((link) => (
+            <Link key={link.href} href={link.href} className="text-white/70 hover:text-white">
+              {link.label}
+            </Link>
+          ))}
           <Link href="/login" className="text-white/80">Sign in</Link>
           <Link href="/register" className="btn bg-white text-ink hover:bg-paper">Start matching</Link>
         </nav>
+        <div className="flex items-center gap-2 lg:hidden">
+          <Link href="/register" className="btn bg-white px-3 text-ink hover:bg-paper">Join</Link>
+          <button
+            type="button"
+            className="grid h-10 w-10 place-items-center rounded-full border border-white/15"
+            aria-expanded={open}
+            aria-label={open ? 'Close menu' : 'Open menu'}
+            onClick={() => setOpen((value) => !value)}
+          >
+            {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
+      {open && (
+        <nav className="border-t border-white/10 px-4 py-4 lg:hidden">
+          <div className="mx-auto flex max-w-6xl flex-col gap-1 text-sm">
+            {marketingLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setOpen(false)}
+                className="rounded-xl px-3 py-3 text-white/80 hover:bg-white/10"
+              >
+                {link.label}
+              </Link>
+            ))}
+            <Link href="/login" onClick={() => setOpen(false)} className="rounded-xl px-3 py-3 text-white/80 hover:bg-white/10">
+              Sign in
+            </Link>
+          </div>
+        </nav>
+      )}
     </header>
   );
 }

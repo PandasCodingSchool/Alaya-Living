@@ -1,6 +1,6 @@
 'use client';
 
-import { LOCALITIES } from '@fmr/shared';
+import { LOCALITIES, RADIUS_OPTIONS_KM } from '@fmr/shared';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
@@ -28,7 +28,7 @@ export default function DiscoverPage() {
 }
 
 function DiscoverInner() {
-  const { user, loading } = useAuth();
+  const { user, loading, refresh } = useAuth();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState((searchParams.get('q') || '').trim());
   const query = search.trim().toLowerCase();
@@ -38,23 +38,46 @@ function DiscoverInner() {
   const [error, setError] = useState('');
   const [openFilters, setOpenFilters] = useState(false);
   const [filters, setFilters] = useState(emptyFilters);
+  const [radiusKm, setRadiusKm] = useState(5);
+  const [draftRadius, setDraftRadius] = useState(5);
+  const [origin, setOrigin] = useState<'office' | 'home'>('office');
+
+  useEffect(() => {
+    if (user?.preferredRadiusKm != null) {
+      setRadiusKm(user.preferredRadiusKm);
+      setDraftRadius(user.preferredRadiusKm);
+    }
+  }, [user?.preferredRadiusKm]);
+
+  useEffect(() => {
+    if (draftRadius === radiusKm) return;
+    const timer = window.setTimeout(() => {
+      setRadiusKm(draftRadius);
+      api('/preferences', { method: 'PUT', body: JSON.stringify({ preferredRadiusKm: draftRadius }) })
+        .then(() => refresh())
+        .catch(() => undefined);
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [draftRadius, radiusKm, refresh]);
 
   useEffect(() => {
     if (!user) return;
+    const params = `?radiusKm=${radiusKm}&origin=${origin}`;
     const load = async () => {
       try {
         const [p, r] = await Promise.all([
-          api<Profile[]>('/discover/people'),
-          api<Room[]>('/discover/rooms'),
+          api<Profile[]>(`/discover/people${params}`),
+          api<Room[]>(`/discover/rooms${params}`),
         ]);
         setPeople(p);
         setRooms(r);
+        setError('');
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not load matches');
       }
     };
     load();
-  }, [user]);
+  }, [user, radiusKm, origin]);
 
   const activeCount = [
     filters.localities.length,
@@ -62,6 +85,7 @@ function DiscoverInner() {
     filters.maxBudget,
     filters.food,
     tab === 'rooms' ? filters.roomType : '',
+    radiusKm !== (user?.preferredRadiusKm ?? 5) ? 1 : 0,
   ].filter(Boolean).length;
 
   const visiblePeople = useMemo(() => {
@@ -110,8 +134,55 @@ function DiscoverInner() {
     }));
   }
 
+  function changeRadius(next: number) {
+    setDraftRadius(next);
+  }
+
   const filterForm = (
     <div className="space-y-5">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Distance</p>
+        <div className="mt-2 grid grid-cols-2 rounded-full bg-[#FFE8F0] p-1 text-xs">
+          <button type="button" className={`rounded-full py-1.5 ${origin === 'office' ? 'bg-white font-medium shadow-sm' : 'text-muted'}`} onClick={() => setOrigin('office')}>
+            From office
+          </button>
+          <button type="button" className={`rounded-full py-1.5 ${origin === 'home' ? 'bg-white font-medium shadow-sm' : 'text-muted'}`} onClick={() => setOrigin('home')}>
+            From home
+          </button>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {RADIUS_OPTIONS_KM.map((km) => (
+            <button
+              key={km}
+              type="button"
+              onClick={() => changeRadius(km)}
+              className={`rounded-full px-3 py-1.5 text-xs ${draftRadius === km ? 'bg-night text-white' : 'bg-[#FFE8F0] text-ink'}`}
+            >
+              {km === 0 ? 'City-wide' : `${km} km`}
+            </button>
+          ))}
+        </div>
+        <label className="mt-3 block">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted">Custom radius</span>
+            <span className="font-semibold">{draftRadius === 0 ? 'City-wide' : `${draftRadius} km`}</span>
+          </div>
+          <input
+            type="range"
+            min={1}
+            max={30}
+            step={1}
+            value={draftRadius === 0 ? 30 : draftRadius}
+            onChange={(e) => changeRadius(Number(e.target.value))}
+            className="radius-slider mt-2"
+            aria-label="Custom search radius in kilometers"
+          />
+          <div className="mt-1 flex justify-between text-[10px] text-muted">
+            <span>1 km</span>
+            <span>30 km</span>
+          </div>
+        </label>
+      </div>
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Corridor</p>
         <div className="mt-2 flex flex-wrap gap-2">
@@ -180,23 +251,26 @@ function DiscoverInner() {
   );
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-8 px-5 py-8 lg:grid-cols-[260px_1fr]">
+    <div className="mx-auto grid max-w-6xl gap-8 px-4 py-6 sm:px-5 sm:py-8 lg:grid-cols-[260px_1fr]">
       <aside className="hidden lg:block">
-        <div className="panel sticky top-24 p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">Filter matches</p>
-          <p className="mt-2 text-sm text-ink/70">
-            Defaults: {user.localities.join(', ') || 'all corridors'} ·{' '}
-            {user.minBudget && user.maxBudget ? `${inr(user.minBudget)}–${inr(user.maxBudget)}` : 'budget open'}
-          </p>
-          <div className="mt-5">{filterForm}</div>
+        <div className="panel sticky top-24 flex max-h-[calc(100vh-7rem)] flex-col overflow-hidden p-5">
+          <div className="shrink-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">Filter matches</p>
+            <p className="mt-2 text-sm text-ink/70">
+              Defaults: {user.localities.join(', ') || 'all corridors'} ·{' '}
+              {user.minBudget && user.maxBudget ? `${inr(user.minBudget)}–${inr(user.maxBudget)}` : 'budget open'}
+            </p>
+          </div>
+          <div className="mt-5 min-h-0 flex-1 overflow-y-auto pr-1">{filterForm}</div>
         </div>
       </aside>
       <div>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-semibold">Discover</h1>
+            <h1 className="text-2xl font-semibold sm:text-3xl">Discover</h1>
             <p className="mt-1 text-sm text-muted">
-              Same-gender only. People near {user.workLocation || 'your office'} show first, then farther tech parks.
+              Same-gender only. {draftRadius === 0 ? 'City-wide' : `Within ${draftRadius} km of your ${origin}`}.
+              {user.workLocation ? ` Office: ${user.workLocation}.` : ''}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -208,11 +282,11 @@ function DiscoverInner() {
               <SlidersHorizontal className="mr-2 h-4 w-4" />
               Filter{activeCount ? ` (${activeCount})` : ''}
             </button>
-            <div className="grid grid-cols-2 rounded-full bg-[#FFE8F0] p-1 text-sm">
-              <button className={`rounded-full px-4 py-1.5 ${tab === 'people' ? 'bg-white font-medium shadow-sm' : 'text-muted'}`} onClick={() => setTab('people')}>
+            <div className="grid grid-cols-2 rounded-full bg-[#FFE8F0] p-1 text-xs sm:text-sm">
+              <button className={`rounded-full px-3 py-1.5 sm:px-4 ${tab === 'people' ? 'bg-white font-medium shadow-sm' : 'text-muted'}`} onClick={() => setTab('people')}>
                 People {visiblePeople.length ? `(${visiblePeople.length})` : ''}
               </button>
-              <button className={`rounded-full px-4 py-1.5 ${tab === 'rooms' ? 'bg-white font-medium shadow-sm' : 'text-muted'}`} onClick={() => setTab('rooms')}>
+              <button className={`rounded-full px-3 py-1.5 sm:px-4 ${tab === 'rooms' ? 'bg-white font-medium shadow-sm' : 'text-muted'}`} onClick={() => setTab('rooms')}>
                 Rooms {visibleRooms.length ? `(${visibleRooms.length})` : ''}
               </button>
             </div>
@@ -230,7 +304,7 @@ function DiscoverInner() {
         </label>
 
         {openFilters && (
-          <div className="panel mt-5 p-5 lg:hidden">
+          <div className="panel mt-5 max-h-[min(70vh,36rem)] overflow-y-auto p-5 lg:hidden">
             <div className="mb-3 flex items-center justify-between">
               <p className="text-sm font-semibold">Filters</p>
               <button type="button" onClick={() => setOpenFilters(false)} aria-label="Close filters">
@@ -254,7 +328,7 @@ function DiscoverInner() {
         )}
         {tab === 'rooms' && !visibleRooms.length && (
           <p className="mt-10 text-muted">
-            {rooms.length ? 'No rooms match these filters. Clear or widen them.' : 'No rooms match your budget and corridors yet.'}
+            {rooms.length ? 'No rooms match these filters. Clear or widen them.' : 'No rooms in this radius. Try 10 km or city-wide.'}
           </p>
         )}
       </div>

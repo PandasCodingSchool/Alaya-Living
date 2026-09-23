@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
+import { BookmarksModule } from './bookmarks/bookmarks.module';
 import { ChatModule } from './chat/chat.module';
 import { InterestsModule } from './interests/interests.module';
 import { MatchingModule } from './matching/matching.module';
@@ -24,6 +25,7 @@ import { UsersModule } from './users/users.module';
     RoomsModule,
     MatchingModule,
     InterestsModule,
+    BookmarksModule,
     MembershipModule,
     ChatModule,
     SafetyModule,

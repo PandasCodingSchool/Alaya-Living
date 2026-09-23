@@ -61,6 +61,7 @@ export function toPublicProfile(user: FullUser) {
     languageMatters: user.preferences?.languageMatters ?? false,
     smokingRequired: user.preferences?.smokingRequired ?? false,
     preferredGenders: user.preferences?.preferredGenders ?? [],
+    preferredRadiusKm: user.preferences?.preferredRadiusKm ?? 5,
     onboardingDone: user.profile?.onboardingDone ?? false,
   };
 }

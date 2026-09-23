@@ -16,9 +16,9 @@ const config: Config = {
         gold: '#E8B84A',
       },
       fontFamily: {
-        display: ['Poppins', 'system-ui', 'sans-serif'],
-        sans: ['Poppins', 'system-ui', 'sans-serif'],
-        mono: ['Poppins', 'system-ui', 'sans-serif'],
+        display: ['var(--font-poppins)', 'Poppins', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-poppins)', 'Poppins', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-poppins)', 'Poppins', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
         panel: '0 10px 40px rgba(244, 63, 122, 0.08)',

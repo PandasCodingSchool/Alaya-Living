@@ -57,9 +57,10 @@ export class UsersService {
 
   async uploadPhoto(user: User, file: Express.Multer.File) {
     const url = await this.storage.upload(file, 'profiles');
-    await this.prisma.profile.update({
+    await this.prisma.profile.upsert({
       where: { userId: user.id },
-      data: { photoUrl: url },
+      update: { photoUrl: url },
+      create: { userId: user.id, firstName: 'Member', photoUrl: url },
     });
     return this.me(user);
   }

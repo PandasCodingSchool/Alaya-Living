@@ -1,31 +1,82 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
+import { Poppins } from 'next/font/google';
 import { AuthProvider } from '@/lib/auth';
+import { BookmarkProvider } from '@/lib/bookmarks';
 import { InboxProvider } from '@/lib/inbox';
+import { absoluteUrl, DEFAULT_DESCRIPTION, DEFAULT_TITLE, SITE_NAME, siteUrl } from '@/lib/seo';
+import { JsonLd, organizationJsonLd, softwareJsonLd, websiteJsonLd } from '@/components/json-ld';
 import { Shell } from '@/components/shell';
 import './globals.css';
 
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+  variable: '--font-poppins',
+});
+
 export const metadata: Metadata = {
-  title: 'Alaya — Compatible roommates in Bengaluru',
-  description:
-    'Find a compatible person to share a room with. Match on budget, locality, lifestyle and language — then chat only after both sides agree.',
-  icons: { icon: '/brand/alaya-icon.png' },
+  metadataBase: new URL(siteUrl()),
+  title: {
+    default: DEFAULT_TITLE,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: DEFAULT_DESCRIPTION,
+  applicationName: SITE_NAME,
+  authors: [{ name: SITE_NAME }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
+  category: 'lifestyle',
+  keywords: [
+    'roommate Bengaluru',
+    'find roommate Bellandur',
+    'share room Whitefield',
+    'compatible roommate',
+    'PG sharing permission',
+    'HSR roommate',
+    'Alaya',
+  ],
+  alternates: { canonical: absoluteUrl('/') },
+  robots: { index: true, follow: true },
+  icons: {
+    icon: '/brand/alaya-icon.png',
+    apple: '/brand/alaya-icon.png',
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'en_IN',
+    url: absoluteUrl('/'),
+    siteName: SITE_NAME,
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+  },
+  formatDetection: { telephone: false, email: false, address: false },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#14080E',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const url = siteUrl();
   return (
-    <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="en-IN" className={poppins.variable}>
       <body className="font-sans text-ink antialiased">
+        <JsonLd data={[organizationJsonLd(url), websiteJsonLd(url), softwareJsonLd(url)]} />
         <AuthProvider>
           <InboxProvider>
-            <Shell>{children}</Shell>
+            <BookmarkProvider>
+              <Shell>{children}</Shell>
+            </BookmarkProvider>
           </InboxProvider>
         </AuthProvider>
       </body>

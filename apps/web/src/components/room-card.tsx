@@ -1,13 +1,19 @@
 import Link from 'next/link';
 import { BadgeCheck, Calendar, MapPin } from 'lucide-react';
+import { useAuth } from '@/lib/auth';
 import type { Room } from '@/lib/types';
 import { inr, prettyEnum } from '@/lib/format';
 import { roomPhotoFor } from '@/lib/media';
 import { Reasons } from './reasons';
+import { SaveButton } from './save-button';
 
 export function RoomCard({ room }: { room: Room }) {
+  const { user } = useAuth();
+  const mine = user?.id === room.owner.id;
+
   return (
-    <article className="panel overflow-hidden">
+    <article className="panel relative overflow-hidden">
+      <SaveButton kind="ROOM" targetId={room.id} hide={mine} variant="overlay" className="absolute right-3 top-3 z-10" />
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={roomPhotoFor(room.locality, room.photos)} alt={`${room.locality} room`} className="h-40 w-full object-cover" />
       <div className="p-5">
@@ -17,6 +23,7 @@ export function RoomCard({ room }: { room: Room }) {
             <p className="mt-1 flex items-center gap-1 text-sm text-muted">
               <MapPin className="h-3.5 w-3.5" /> {room.locality} · {prettyEnum(room.roomType)}
             </p>
+            {room.distanceLabel && <p className="mt-1 text-xs font-medium text-clay">{room.distanceLabel}</p>}
           </div>
           {room.compatibility && (
             <div className="text-right">
