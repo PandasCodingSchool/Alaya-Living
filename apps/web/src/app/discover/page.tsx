@@ -1,7 +1,7 @@
 'use client';
 
 import { LOCALITIES } from '@fmr/shared';
-import { SlidersHorizontal, X } from 'lucide-react';
+import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { MatchCard } from '@/components/match-card';
@@ -30,7 +30,8 @@ export default function DiscoverPage() {
 function DiscoverInner() {
   const { user, loading } = useAuth();
   const searchParams = useSearchParams();
-  const query = (searchParams.get('q') || '').trim().toLowerCase();
+  const [search, setSearch] = useState((searchParams.get('q') || '').trim());
+  const query = search.trim().toLowerCase();
   const [tab, setTab] = useState<'people' | 'rooms'>('people');
   const [people, setPeople] = useState<Profile[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -194,7 +195,9 @@ function DiscoverInner() {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="text-3xl font-semibold">Discover</h1>
-            <p className="mt-1 text-sm text-muted">People to share with, or rooms already listed in your corridors.</p>
+            <p className="mt-1 text-sm text-muted">
+              Same-gender only. People near {user.workLocation || 'your office'} show first, then farther tech parks.
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -215,6 +218,16 @@ function DiscoverInner() {
             </div>
           </div>
         </div>
+
+        <label className="relative mt-5 block">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={tab === 'people' ? 'Search people by name, work, or locality' : 'Search rooms by locality or host'}
+            className="w-full rounded-full border border-sand bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-clay"
+          />
+        </label>
 
         {openFilters && (
           <div className="panel mt-5 p-5 lg:hidden">

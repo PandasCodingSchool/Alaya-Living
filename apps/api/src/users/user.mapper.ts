@@ -1,4 +1,5 @@
 import { Preference, Profile, User, UserLanguage } from '@prisma/client';
+import { publicMediaUrl } from '../lib/media-url';
 
 type FullUser = User & {
   profile: Profile | null;
@@ -34,7 +35,7 @@ export function toPublicProfile(user: FullUser) {
     gender: user.profile?.gender ?? null,
     occupation: user.profile?.occupation ?? user.profile?.jobTitle ?? null,
     bio: user.profile?.bio ?? null,
-    photoUrl: user.profile?.photoUrl ?? null,
+    photoUrl: publicMediaUrl(user.profile?.photoUrl),
     city: user.profile?.city ?? 'Bengaluru',
     workLocation: user.profile?.workLocation ?? null,
     workMode: user.profile?.workMode ?? null,

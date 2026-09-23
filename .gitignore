@@ -13,3 +13,6 @@ apps/web/out
 uploads
 minio-data
 postgres-data
+packages/shared/src/*.js
+packages/shared/src/*.d.ts
+packages/shared/src/*.js.map

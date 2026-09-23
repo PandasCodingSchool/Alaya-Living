@@ -1,4 +1,5 @@
 import { MATCH_WEIGHTS } from './constants';
+import { isOppositeGender } from './offices';
 import type { CompatibilityReason, CompatibilityResult } from './types';
 
 export interface MatchablePerson {
@@ -59,10 +60,7 @@ function daysBetween(a: Date | null, b: Date | null) {
 }
 
 export function passesHardFilters(viewer: MatchablePerson, candidate: MatchablePerson) {
-  const sharedLocality = viewer.localities.some((l) => candidate.localities.includes(l));
-  if (viewer.localities.length && candidate.localities.length && !sharedLocality) {
-    return false;
-  }
+  if (isOppositeGender(viewer.gender, candidate.gender)) return false;
 
   if (
     viewer.minBudget != null &&
@@ -92,7 +90,6 @@ export function passesHardFilters(viewer: MatchablePerson, candidate: MatchableP
 export function passesRoomHardFilters(viewer: MatchablePerson, room: MatchableRoom) {
   if (room.sharingPermission === 'NO') return false;
   if (room.availableSlots < 1) return false;
-  if (viewer.localities.length && !viewer.localities.includes(room.locality)) return false;
   if (viewer.maxBudget != null && room.roommateContribution > viewer.maxBudget) return false;
   if (viewer.minBudget != null && room.roommateContribution < viewer.minBudget * 0.6) return false;
   const gap = daysBetween(viewer.moveInDate, room.availableFrom);

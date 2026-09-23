@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { officeProximity } from '../lib/offices';
 import {
   MatchablePerson,
   passesHardFilters,
@@ -35,6 +36,7 @@ function toMatchable(user: FullUser): MatchablePerson {
     languages: user.languages.map((l) => l.language),
     languageMatters: user.preferences?.languageMatters ?? false,
     workMode: user.profile?.workMode ?? null,
+    workLocation: user.profile?.workLocation ?? null,
     gender: user.profile?.gender ?? null,
     preferredGenders: user.preferences?.preferredGenders ?? [],
   };
@@ -63,7 +65,11 @@ export class MatchingService {
         const compatibility = scorePeople(viewerM, toMatchable(c));
         return { ...toPublicProfile(c), compatibility };
       })
-      .sort((a, b) => b.compatibility.score - a.compatibility.score);
+      .sort((a, b) => {
+        const office = officeProximity(viewerM.workLocation, b.workLocation) - officeProximity(viewerM.workLocation, a.workLocation);
+        if (office !== 0) return office;
+        return b.compatibility.score - a.compatibility.score;
+      });
   }
 
   async rooms(viewerId: string) {
@@ -101,7 +107,13 @@ export class MatchingService {
         ...toPublicRoom(room),
         compatibility: scoreRoom(viewerM, matchableRoom),
       }))
-      .sort((a, b) => b.compatibility.score - a.compatibility.score);
+      .sort((a, b) => {
+        const office =
+          officeProximity(viewerM.workLocation, b.owner.workLocation) -
+          officeProximity(viewerM.workLocation, a.owner.workLocation);
+        if (office !== 0) return office;
+        return b.compatibility.score - a.compatibility.score;
+      });
   }
 
   async personWithScore(viewerId: string, otherId: string) {

@@ -1,8 +1,11 @@
+import { isOppositeGender, officeProximity, officeProximityLabel } from './offices';
+
 const MATCH_WEIGHTS = {
-  location: 0.25,
-  budget: 0.2,
-  moveIn: 0.15,
-  lifestyle: 0.15,
+  location: 0.15,
+  office: 0.15,
+  budget: 0.18,
+  moveIn: 0.13,
+  lifestyle: 0.14,
   food: 0.1,
   language: 0.1,
   work: 0.05,
@@ -37,6 +40,7 @@ export interface MatchablePerson {
   languages: string[];
   languageMatters: boolean;
   workMode: string | null;
+  workLocation: string | null;
   gender: string | null;
   preferredGenders: string[];
 }
@@ -73,8 +77,7 @@ function daysBetween(a: Date | null, b: Date | null) {
 }
 
 export function passesHardFilters(viewer: MatchablePerson, candidate: MatchablePerson) {
-  const sharedLocality = viewer.localities.some((l) => candidate.localities.includes(l));
-  if (viewer.localities.length && candidate.localities.length && !sharedLocality) return false;
+  if (isOppositeGender(viewer.gender, candidate.gender)) return false;
 
   if (
     viewer.minBudget != null &&
@@ -104,7 +107,6 @@ export function passesHardFilters(viewer: MatchablePerson, candidate: MatchableP
 export function passesRoomHardFilters(viewer: MatchablePerson, room: MatchableRoom) {
   if (room.sharingPermission === 'NO') return false;
   if (room.availableSlots < 1) return false;
-  if (viewer.localities.length && !viewer.localities.includes(room.locality)) return false;
   if (viewer.maxBudget != null && room.roommateContribution > viewer.maxBudget) return false;
   if (viewer.minBudget != null && room.roommateContribution < viewer.minBudget * 0.6) return false;
   const gap = daysBetween(viewer.moveInDate, room.availableFrom);
@@ -114,7 +116,9 @@ export function passesRoomHardFilters(viewer: MatchablePerson, room: MatchableRo
 
 export function scorePeople(a: MatchablePerson, b: MatchablePerson): CompatibilityResult {
   const sharedLocalities = a.localities.filter((l) => b.localities.includes(l));
-  const locationScore = sharedLocalities.length ? 1 : a.localities.length && b.localities.length ? 0.15 : 0.5;
+  const locationScore = sharedLocalities.length ? 1 : a.localities.length && b.localities.length ? 0.2 : 0.5;
+  const officeScoreValue = officeProximity(a.workLocation, b.workLocation);
+  const officeScore = officeScoreValue === 0 ? 0.45 : officeScoreValue / 4;
   const budgetScore = budgetOverlap(a.minBudget, a.maxBudget, b.minBudget, b.maxBudget);
   const moveGap = daysBetween(a.moveInDate, b.moveInDate);
   const moveInScore = moveGap == null ? 0.5 : clamp(1 - moveGap / 45);
@@ -144,6 +148,7 @@ export function scorePeople(a: MatchablePerson, b: MatchablePerson): Compatibili
   const workScore = !a.workMode || !b.workMode ? 0.5 : a.workMode === b.workMode ? 1 : 0.45;
   const score = Math.round(
     (locationScore * MATCH_WEIGHTS.location +
+      officeScore * MATCH_WEIGHTS.office +
       budgetScore * MATCH_WEIGHTS.budget +
       moveInScore * MATCH_WEIGHTS.moveIn +
       lifestyleScore * MATCH_WEIGHTS.lifestyle +
@@ -154,6 +159,21 @@ export function scorePeople(a: MatchablePerson, b: MatchablePerson): Compatibili
   );
 
   const reasons: CompatibilityReason[] = [];
+  if (officeScoreValue >= 2) {
+    reasons.push({
+      factor: 'office',
+      kind: 'POSITIVE',
+      score: officeScore,
+      description: `${officeProximityLabel(officeScoreValue)}${a.workLocation ? ` · ${a.workLocation}` : ''}`,
+    });
+  } else if (officeScoreValue === 1) {
+    reasons.push({
+      factor: 'office',
+      kind: 'DIFFERENCE',
+      score: officeScore,
+      description: `Farther commute · ${[a.workLocation, b.workLocation].filter(Boolean).join(' vs ')}`,
+    });
+  }
   if (sharedLocalities.length) {
     reasons.push({ factor: 'location', kind: 'POSITIVE', score: locationScore, description: `Same locality · ${sharedLocalities.join(', ')}` });
   } else if (a.localities.length && b.localities.length) {

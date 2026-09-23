@@ -1,6 +1,7 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { publicMediaUrl } from '../lib/media-url';
 import { StorageService } from '../storage/storage.service';
 import { toPublicProfile, userInclude } from '../users/user.mapper';
 import { CreateRoomDto, SearchRoomsDto, UpdateRoomDto } from './dto';
@@ -48,7 +49,7 @@ export function toPublicRoom(room: {
     availableFrom: room.accommodation.availableFrom.toISOString(),
     amenities: room.amenities.map((a) => a.name),
     sharingPermission: room.accommodation.sharingPermission,
-    photos: room.photos,
+    photos: room.photos.map((photo) => publicMediaUrl(photo) || photo),
     currentOccupants: room.currentOccupants,
     availableSlots: room.availableSlots,
     capacity: room.capacity,
@@ -66,6 +67,14 @@ export class RoomsService {
   ) {}
 
   async create(user: User, dto: CreateRoomDto) {
+    const existing = await this.prisma.room.findFirst({
+      where: { accommodation: { ownerUserId: user.id } },
+      select: { id: true },
+    });
+    if (existing) {
+      throw new ConflictException('You can list only one room. Edit your existing listing instead.');
+    }
+
     const accommodation = await this.prisma.accommodation.create({
       data: {
         ownerUserId: user.id,

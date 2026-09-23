@@ -13,6 +13,7 @@ interface MatchRow {
   score: number;
   status: string;
   conversationId: string | null;
+  lastMessage: { id: string; senderId: string; body: string } | null;
   reasons: CompatibilityReason[];
   user: Profile;
 }
@@ -35,7 +36,9 @@ export default function MatchesPage() {
   return (
     <div className="mx-auto max-w-4xl px-5 py-10">
       <h1 className="text-3xl font-semibold">Matches</h1>
-      <p className="mt-2 text-sm text-muted">Mutual only. One-way interest sits below until they respond.</p>
+      <p className="mt-2 text-sm text-muted">
+        Mutual only. Once you both like each other, chat is open for both of you — they join from Matches or Messages.
+      </p>
       <section className="mt-8 space-y-4">
         {data.matches.map((match) => (
           <article key={match.id} className="panel p-5">
@@ -44,7 +47,9 @@ export default function MatchesPage() {
                 <Avatar name={match.user.name} photoUrl={match.user.photoUrl} size={48} />
                 <div>
                 <p className="text-lg font-semibold">{match.user.name}</p>
-                <p className="text-xs text-muted">{match.score}% · {match.status}</p>
+                <p className="max-w-[36ch] truncate text-xs text-muted">
+                  {match.score}% · {match.lastMessage ? match.lastMessage.body : match.status === 'CHAT_STARTED' ? 'Chat started' : 'Chat is open — say hello'}
+                </p>
                 </div>
               </div>
               {match.conversationId && (

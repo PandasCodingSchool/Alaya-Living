@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { AuthProvider } from '@/lib/auth';
+import { InboxProvider } from '@/lib/inbox';
 import { Shell } from '@/components/shell';
 import './globals.css';
 
@@ -23,7 +24,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="font-sans text-ink antialiased">
         <AuthProvider>
-          <Shell>{children}</Shell>
+          <InboxProvider>
+            <Shell>{children}</Shell>
+          </InboxProvider>
         </AuthProvider>
       </body>
     </html>

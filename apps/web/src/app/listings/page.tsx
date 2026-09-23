@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { officeLocalities } from '@fmr/shared';
 import { RoomCard } from '@/components/room-card';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -19,7 +20,11 @@ export default function ListingsPage() {
       try {
         const myRooms = await api<Room[]>('/rooms/mine');
         setMine(myRooms);
-        const corridors = [...new Set([...user.localities, ...myRooms.map((room) => room.locality)])];
+        const corridors = [...new Set([
+          ...user.localities,
+          ...officeLocalities(user.workLocation),
+          ...myRooms.map((room) => room.locality),
+        ])];
         let candidates: Room[] = [];
         try {
           candidates = await api<Room[]>('/discover/rooms');
@@ -60,15 +65,21 @@ export default function ListingsPage() {
           <h1 className="text-3xl font-semibold">Rooms</h1>
           <p className="mt-1 text-sm text-muted">Your listings, plus available rooms near {area}.</p>
         </div>
-        <Link href="/rooms/new" className="btn-primary">
-          List a room
-        </Link>
+        {mine[0] ? (
+          <Link href={`/rooms/${mine[0].id}/edit`} className="btn-primary">
+            Edit listing
+          </Link>
+        ) : (
+          <Link href="/rooms/new" className="btn-primary">
+            List a room
+          </Link>
+        )}
       </div>
 
       <section className="mt-10">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Your listings</h2>
-          <span className="text-xs text-muted">{mine.length} listed</span>
+          <h2 className="text-lg font-semibold">Your listing</h2>
+          <span className="text-xs text-muted">{mine.length ? '1 of 1' : 'None yet'}</span>
         </div>
         <div className="mt-4 grid gap-5 md:grid-cols-2">
           {mine.map((room) => <RoomCard key={room.id} room={room} />)}

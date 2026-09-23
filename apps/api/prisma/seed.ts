@@ -14,331 +14,821 @@ import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
-async function main() {
-  const existing = await prisma.user.count();
-  if (existing > 0) {
-    console.log('Seed skipped — users already exist');
-    return;
-  }
+type SeedUser = {
+  email: string;
+  phone: string;
+  firstName: string;
+  age: number;
+  gender: Gender;
+  occupation: string;
+  jobTitle: string;
+  bio: string;
+  workLocation: string;
+  workMode: WorkMode;
+  intent: UserIntent;
+  phoneVerified?: boolean;
+  minBudget: number;
+  maxBudget: number;
+  moveInDate: string;
+  sleepStart: number;
+  sleepEnd: number;
+  cleanliness: number;
+  noiseTolerance: number;
+  cookingFrequency: number;
+  guestFrequency: number;
+  foodPreference: FoodPreference;
+  smokingPreference: SmokingPreference;
+  smokingRequired?: boolean;
+  alcoholPreference: AlcoholPreference;
+  pets?: boolean;
+  languageMatters?: boolean;
+  localities: string[];
+  languages: string[];
+  room?: {
+    propertyType: PropertyType;
+    locality: string;
+    exactAddress: string;
+    monthlyRent: number;
+    roommateContribution: number;
+    deposit: number;
+    availableFrom: string;
+    sharingPermission: SharingPermission;
+    roomType: RoomType;
+    notes: string;
+    amenities: string[];
+  };
+};
 
-  const passwordHash = await bcrypt.hash('Password123!', 10);
-
-  await prisma.message.deleteMany();
-  await prisma.conversation.deleteMany();
-  await prisma.matchReason.deleteMany();
-  await prisma.match.deleteMany();
-  await prisma.interest.deleteMany();
-  await prisma.block.deleteMany();
-  await prisma.roomAmenity.deleteMany();
-  await prisma.room.deleteMany();
-  await prisma.accommodation.deleteMany();
-  await prisma.userLanguage.deleteMany();
-  await prisma.preference.deleteMany();
-  await prisma.profile.deleteMany();
-  await prisma.user.deleteMany();
-
-  const pankaj = await prisma.user.create({
-    data: {
-      email: 'pankaj@fmr.test',
-      phone: '9876500001',
-      passwordHash,
-      emailVerified: true,
-      phoneVerified: true,
-      profile: {
-        create: {
-          firstName: 'Pankaj',
-          age: 28,
-          gender: Gender.MALE,
-          occupation: 'Software Engineer',
-          jobTitle: 'Backend Engineer',
-          bio: 'Have a single room in Bellandur and looking for one compatible person to share it with.',
-          city: 'Bengaluru',
-          workLocation: 'Bellandur',
-          workMode: WorkMode.HYBRID,
-          intent: UserIntent.HAVE_ROOM,
-          onboardingDone: true,
-        },
-      },
-      preferences: {
-        create: {
-          minBudget: 8000,
-          maxBudget: 12000,
-          moveInDate: new Date('2026-10-01'),
-          sleepStart: 23,
-          sleepEnd: 7,
-          cleanliness: 4,
-          noiseTolerance: 2,
-          cookingFrequency: 2,
-          guestFrequency: 2,
-          foodPreference: FoodPreference.VEGETARIAN,
-          smokingPreference: SmokingPreference.NO,
-          smokingRequired: true,
-          alcoholPreference: AlcoholPreference.SOCIALLY,
-          pets: false,
-          languageMatters: true,
-          localities: ['Bellandur', 'Kadubeesanahalli'],
-        },
-      },
-      languages: { create: [{ language: 'English' }, { language: 'Hindi' }] },
-    },
-  });
-
-  const arjun = await prisma.user.create({
-    data: {
-      email: 'arjun@fmr.test',
-      phone: '9876500002',
-      passwordHash,
-      emailVerified: true,
-      phoneVerified: true,
-      profile: {
-        create: {
-          firstName: 'Arjun',
-          age: 27,
-          gender: Gender.MALE,
-          occupation: 'Software Engineer',
-          jobTitle: 'Frontend Engineer',
-          bio: 'Joining a team in Bellandur. Looking for a quiet, compatible roommate and an affordable room.',
-          city: 'Bengaluru',
-          workLocation: 'Bellandur',
-          workMode: WorkMode.OFFICE,
-          intent: UserIntent.NEED_ROOM,
-          onboardingDone: true,
-        },
-      },
-      preferences: {
-        create: {
-          minBudget: 8000,
-          maxBudget: 12000,
-          moveInDate: new Date('2026-10-01'),
-          sleepStart: 23,
-          sleepEnd: 7,
-          cleanliness: 4,
-          noiseTolerance: 2,
-          cookingFrequency: 3,
-          guestFrequency: 2,
-          foodPreference: FoodPreference.BOTH,
-          smokingPreference: SmokingPreference.NO,
-          smokingRequired: true,
-          alcoholPreference: AlcoholPreference.SOCIALLY,
-          pets: false,
-          languageMatters: false,
-          localities: ['Bellandur', 'Kadubeesanahalli', 'Marathahalli'],
-        },
-      },
-      languages: { create: [{ language: 'English' }, { language: 'Hindi' }, { language: 'Kannada' }] },
-    },
-  });
-
-  const rahul = await prisma.user.create({
-    data: {
-      email: 'rahul@fmr.test',
-      phone: '9876500003',
-      passwordHash,
-      emailVerified: true,
-      phoneVerified: true,
-      profile: {
-        create: {
-          firstName: 'Rahul',
-          age: 29,
-          gender: Gender.MALE,
-          occupation: 'Product Designer',
-          jobTitle: 'Designer',
-          bio: 'HSR apartment with a spare room. Prefer someone tidy who works typical office hours.',
-          city: 'Bengaluru',
-          workLocation: 'Koramangala',
-          workMode: WorkMode.HYBRID,
-          intent: UserIntent.HAVE_ROOM,
-          onboardingDone: true,
-        },
-      },
-      preferences: {
-        create: {
-          minBudget: 10000,
-          maxBudget: 15000,
-          moveInDate: new Date('2026-10-15'),
-          sleepStart: 22,
-          sleepEnd: 6,
-          cleanliness: 5,
-          noiseTolerance: 3,
-          cookingFrequency: 4,
-          guestFrequency: 3,
-          foodPreference: FoodPreference.NON_VEGETARIAN,
-          smokingPreference: SmokingPreference.NO,
-          alcoholPreference: AlcoholPreference.YES,
-          pets: false,
-          languageMatters: false,
-          localities: ['HSR', 'Koramangala'],
-        },
-      },
-      languages: { create: [{ language: 'English' }, { language: 'Hindi' }] },
-    },
-  });
-
-  const priya = await prisma.user.create({
-    data: {
-      email: 'priya@fmr.test',
-      phone: '9876500004',
-      passwordHash,
-      emailVerified: true,
-      phoneVerified: true,
-      profile: {
-        create: {
-          firstName: 'Priya',
-          age: 26,
-          gender: Gender.FEMALE,
-          occupation: 'Data Analyst',
-          jobTitle: 'Analyst',
-          bio: 'Moving to Whitefield and looking for a compatible roommate in a well-connected locality.',
-          city: 'Bengaluru',
-          workLocation: 'Whitefield',
-          workMode: WorkMode.HYBRID,
-          intent: UserIntent.NEED_ROOM,
-          onboardingDone: true,
-        },
-      },
-      preferences: {
-        create: {
-          minBudget: 9000,
-          maxBudget: 14000,
-          moveInDate: new Date('2026-10-10'),
-          sleepStart: 22,
-          sleepEnd: 6,
-          cleanliness: 5,
-          noiseTolerance: 2,
-          cookingFrequency: 3,
-          guestFrequency: 1,
-          foodPreference: FoodPreference.VEGETARIAN,
-          smokingPreference: SmokingPreference.NO,
-          smokingRequired: true,
-          alcoholPreference: AlcoholPreference.NO,
-          pets: false,
-          languageMatters: true,
-          localities: ['Whitefield', 'HSR', 'Marathahalli'],
-        },
-      },
-      languages: { create: [{ language: 'English' }, { language: 'Hindi' }, { language: 'Tamil' }] },
-    },
-  });
-
-  const vivek = await prisma.user.create({
-    data: {
-      email: 'vivek@fmr.test',
-      phone: '9876500005',
-      passwordHash,
-      emailVerified: true,
-      phoneVerified: false,
-      profile: {
-        create: {
-          firstName: 'Vivek',
-          age: 25,
-          gender: Gender.MALE,
-          occupation: 'Software Engineer',
-          jobTitle: 'SDE-1',
-          bio: 'New joiner. Need a room near Bellandur without stretching my budget.',
-          city: 'Bengaluru',
-          workLocation: 'Kadubeesanahalli',
-          workMode: WorkMode.OFFICE,
-          intent: UserIntent.NEED_ROOM,
-          onboardingDone: true,
-        },
-      },
-      preferences: {
-        create: {
-          minBudget: 7000,
-          maxBudget: 11000,
-          moveInDate: new Date('2026-10-05'),
-          sleepStart: 0,
-          sleepEnd: 8,
-          cleanliness: 3,
-          noiseTolerance: 3,
-          cookingFrequency: 2,
-          guestFrequency: 3,
-          foodPreference: FoodPreference.NON_VEGETARIAN,
-          smokingPreference: SmokingPreference.OUTSIDE_ONLY,
-          alcoholPreference: AlcoholPreference.SOCIALLY,
-          pets: true,
-          languageMatters: false,
-          localities: ['Bellandur', 'Kadubeesanahalli', 'Marathahalli'],
-        },
-      },
-      languages: { create: [{ language: 'English' }, { language: 'Hindi' }, { language: 'Telugu' }] },
-    },
-  });
-
-  await prisma.accommodation.create({
-    data: {
-      ownerUserId: pankaj.id,
+const people: SeedUser[] = [
+  {
+    email: 'pankaj@fmr.test',
+    phone: '9876500001',
+    firstName: 'Pankaj',
+    age: 28,
+    gender: Gender.MALE,
+    occupation: 'Software Engineer',
+    jobTitle: 'Backend Engineer',
+    bio: 'Have a single room in Bellandur. Work at RMZ Ecoworld. Looking for one compatible person to share.',
+    workLocation: 'RMZ Ecoworld',
+    workMode: WorkMode.HYBRID,
+    intent: UserIntent.HAVE_ROOM,
+    minBudget: 8000,
+    maxBudget: 12000,
+    moveInDate: '2026-10-01',
+    sleepStart: 23,
+    sleepEnd: 7,
+    cleanliness: 4,
+    noiseTolerance: 2,
+    cookingFrequency: 2,
+    guestFrequency: 2,
+    foodPreference: FoodPreference.VEGETARIAN,
+    smokingPreference: SmokingPreference.NO,
+    smokingRequired: true,
+    alcoholPreference: AlcoholPreference.SOCIALLY,
+    languageMatters: true,
+    localities: ['Bellandur', 'Kadubeesanahalli'],
+    languages: ['English', 'Hindi'],
+    room: {
       propertyType: PropertyType.PG,
       locality: 'Bellandur',
       exactAddress: '12th Cross, Bellandur, Bengaluru',
       monthlyRent: 20000,
       roommateContribution: 10000,
       deposit: 30000,
-      availableFrom: new Date('2026-10-01'),
+      availableFrom: '2026-10-01',
       sharingPermission: SharingPermission.REQUIRES_APPROVAL,
-      rooms: {
-        create: {
-          roomType: RoomType.SINGLE,
-          capacity: 2,
-          currentOccupants: 1,
-          availableSlots: 1,
-          furnished: true,
-          notes: 'Single room in a managed PG. Sharing needs PG approval.',
-          amenities: {
-            create: [
-              { name: 'WiFi' },
-              { name: 'AC' },
-              { name: 'Attached bathroom' },
-              { name: 'Food' },
-              { name: 'Housekeeping' },
-            ],
-          },
-        },
-      },
+      roomType: RoomType.SINGLE,
+      notes: 'Single room in a managed PG. Sharing needs PG approval. Men only.',
+      amenities: ['WiFi', 'AC', 'Attached bathroom', 'Food', 'Housekeeping'],
     },
-  });
-
-  await prisma.accommodation.create({
-    data: {
-      ownerUserId: rahul.id,
+  },
+  {
+    email: 'arjun@fmr.test',
+    phone: '9876500002',
+    firstName: 'Arjun',
+    age: 27,
+    gender: Gender.MALE,
+    occupation: 'Software Engineer',
+    jobTitle: 'Frontend Engineer',
+    bio: 'Joining RMZ Ecoworld. Want a quiet roommate and a room on the ORR.',
+    workLocation: 'RMZ Ecoworld',
+    workMode: WorkMode.OFFICE,
+    intent: UserIntent.NEED_ROOM,
+    minBudget: 8000,
+    maxBudget: 12000,
+    moveInDate: '2026-10-01',
+    sleepStart: 23,
+    sleepEnd: 7,
+    cleanliness: 4,
+    noiseTolerance: 2,
+    cookingFrequency: 3,
+    guestFrequency: 2,
+    foodPreference: FoodPreference.BOTH,
+    smokingPreference: SmokingPreference.NO,
+    smokingRequired: true,
+    alcoholPreference: AlcoholPreference.SOCIALLY,
+    localities: ['Bellandur', 'Kadubeesanahalli', 'Marathahalli'],
+    languages: ['English', 'Hindi', 'Kannada'],
+  },
+  {
+    email: 'vivek@fmr.test',
+    phone: '9876500005',
+    firstName: 'Vivek',
+    age: 25,
+    gender: Gender.MALE,
+    occupation: 'Software Engineer',
+    jobTitle: 'SDE-1',
+    bio: 'New joiner at Cessna. Need a room near Bellandur without stretching my budget.',
+    workLocation: 'Cessna Business Park',
+    workMode: WorkMode.OFFICE,
+    intent: UserIntent.NEED_ROOM,
+    phoneVerified: false,
+    minBudget: 7000,
+    maxBudget: 11000,
+    moveInDate: '2026-10-05',
+    sleepStart: 0,
+    sleepEnd: 8,
+    cleanliness: 3,
+    noiseTolerance: 3,
+    cookingFrequency: 2,
+    guestFrequency: 3,
+    foodPreference: FoodPreference.NON_VEGETARIAN,
+    smokingPreference: SmokingPreference.OUTSIDE_ONLY,
+    alcoholPreference: AlcoholPreference.SOCIALLY,
+    pets: true,
+    localities: ['Bellandur', 'Kadubeesanahalli', 'Marathahalli'],
+    languages: ['English', 'Hindi', 'Telugu'],
+  },
+  {
+    email: 'rohan@fmr.test',
+    phone: '9876500006',
+    firstName: 'Rohan',
+    age: 26,
+    gender: Gender.MALE,
+    occupation: 'DevOps Engineer',
+    jobTitle: 'SRE',
+    bio: 'Embassy TechVillage commute. Prefer someone who sleeps by midnight.',
+    workLocation: 'Embassy TechVillage',
+    workMode: WorkMode.HYBRID,
+    intent: UserIntent.NEED_ROOM,
+    minBudget: 8500,
+    maxBudget: 13000,
+    moveInDate: '2026-10-03',
+    sleepStart: 23,
+    sleepEnd: 7,
+    cleanliness: 4,
+    noiseTolerance: 2,
+    cookingFrequency: 2,
+    guestFrequency: 1,
+    foodPreference: FoodPreference.VEGETARIAN,
+    smokingPreference: SmokingPreference.NO,
+    smokingRequired: true,
+    alcoholPreference: AlcoholPreference.NO,
+    localities: ['Bellandur', 'Kadubeesanahalli'],
+    languages: ['English', 'Hindi', 'Marathi'],
+  },
+  {
+    email: 'karan@fmr.test',
+    phone: '9876500007',
+    firstName: 'Karan',
+    age: 29,
+    gender: Gender.MALE,
+    occupation: 'Engineering Manager',
+    jobTitle: 'EM',
+    bio: 'Spare room next to Cessna. Looking for a working professional.',
+    workLocation: 'Cessna Business Park',
+    workMode: WorkMode.HYBRID,
+    intent: UserIntent.HAVE_ROOM,
+    minBudget: 9000,
+    maxBudget: 13000,
+    moveInDate: '2026-10-08',
+    sleepStart: 22,
+    sleepEnd: 6,
+    cleanliness: 4,
+    noiseTolerance: 3,
+    cookingFrequency: 3,
+    guestFrequency: 2,
+    foodPreference: FoodPreference.BOTH,
+    smokingPreference: SmokingPreference.NO,
+    smokingRequired: true,
+    alcoholPreference: AlcoholPreference.SOCIALLY,
+    localities: ['Kadubeesanahalli', 'Bellandur'],
+    languages: ['English', 'Hindi'],
+    room: {
+      propertyType: PropertyType.APARTMENT,
+      locality: 'Kadubeesanahalli',
+      exactAddress: 'Outer Ring Road, Kadubeesanahalli',
+      monthlyRent: 24000,
+      roommateContribution: 12000,
+      deposit: 36000,
+      availableFrom: '2026-10-08',
+      sharingPermission: SharingPermission.YES,
+      roomType: RoomType.SINGLE,
+      notes: '2BHK, one bedroom free. 10 minutes to Cessna.',
+      amenities: ['WiFi', 'AC', 'Furnished', 'Parking', 'Power backup'],
+    },
+  },
+  {
+    email: 'dev@fmr.test',
+    phone: '9876500008',
+    firstName: 'Dev',
+    age: 28,
+    gender: Gender.MALE,
+    occupation: 'QA Engineer',
+    jobTitle: 'SDET',
+    bio: 'Prestige Tech Park. Have a room in Marathahalli.',
+    workLocation: 'Prestige Tech Park',
+    workMode: WorkMode.OFFICE,
+    intent: UserIntent.HAVE_ROOM,
+    minBudget: 8000,
+    maxBudget: 12000,
+    moveInDate: '2026-10-12',
+    sleepStart: 23,
+    sleepEnd: 7,
+    cleanliness: 3,
+    noiseTolerance: 3,
+    cookingFrequency: 2,
+    guestFrequency: 2,
+    foodPreference: FoodPreference.NON_VEGETARIAN,
+    smokingPreference: SmokingPreference.NO,
+    alcoholPreference: AlcoholPreference.SOCIALLY,
+    localities: ['Marathahalli', 'Bellandur'],
+    languages: ['English', 'Kannada'],
+    room: {
+      propertyType: PropertyType.PG,
+      locality: 'Marathahalli',
+      exactAddress: 'Ashwath Nagar, Marathahalli',
+      monthlyRent: 18000,
+      roommateContribution: 9000,
+      deposit: 18000,
+      availableFrom: '2026-10-12',
+      sharingPermission: SharingPermission.YES,
+      roomType: RoomType.DOUBLE,
+      notes: 'PG double room. Men only. Food included.',
+      amenities: ['WiFi', 'Food', 'Laundry', 'Housekeeping'],
+    },
+  },
+  {
+    email: 'aditya@fmr.test',
+    phone: '9876500009',
+    firstName: 'Aditya',
+    age: 24,
+    gender: Gender.MALE,
+    occupation: 'Software Engineer',
+    jobTitle: 'SDE-1',
+    bio: 'Ecospace intern-to-full-time. Looking near Bellandur.',
+    workLocation: 'Ecospace',
+    workMode: WorkMode.OFFICE,
+    intent: UserIntent.NEED_ROOM,
+    minBudget: 7500,
+    maxBudget: 11000,
+    moveInDate: '2026-10-06',
+    sleepStart: 0,
+    sleepEnd: 8,
+    cleanliness: 3,
+    noiseTolerance: 4,
+    cookingFrequency: 1,
+    guestFrequency: 2,
+    foodPreference: FoodPreference.BOTH,
+    smokingPreference: SmokingPreference.NO,
+    alcoholPreference: AlcoholPreference.SOCIALLY,
+    localities: ['Bellandur', 'Marathahalli'],
+    languages: ['English', 'Hindi'],
+  },
+  {
+    email: 'rahul@fmr.test',
+    phone: '9876500003',
+    firstName: 'Rahul',
+    age: 29,
+    gender: Gender.MALE,
+    occupation: 'Product Designer',
+    jobTitle: 'Designer',
+    bio: 'HSR apartment with a spare room. Work around Koramangala.',
+    workLocation: 'Koramangala offices',
+    workMode: WorkMode.HYBRID,
+    intent: UserIntent.HAVE_ROOM,
+    minBudget: 10000,
+    maxBudget: 15000,
+    moveInDate: '2026-10-15',
+    sleepStart: 22,
+    sleepEnd: 6,
+    cleanliness: 5,
+    noiseTolerance: 3,
+    cookingFrequency: 4,
+    guestFrequency: 3,
+    foodPreference: FoodPreference.NON_VEGETARIAN,
+    smokingPreference: SmokingPreference.NO,
+    alcoholPreference: AlcoholPreference.YES,
+    localities: ['HSR', 'Koramangala'],
+    languages: ['English', 'Hindi'],
+    room: {
       propertyType: PropertyType.APARTMENT,
       locality: 'HSR',
       exactAddress: '27th Main, HSR Layout',
       monthlyRent: 28000,
       roommateContribution: 14000,
       deposit: 40000,
-      availableFrom: new Date('2026-10-15'),
+      availableFrom: '2026-10-15',
       sharingPermission: SharingPermission.YES,
-      rooms: {
-        create: {
-          roomType: RoomType.SINGLE,
-          capacity: 2,
-          currentOccupants: 1,
-          availableSlots: 1,
-          furnished: true,
-          notes: '2BHK apartment. One bedroom available.',
-          amenities: {
-            create: [
-              { name: 'WiFi' },
-              { name: 'AC' },
-              { name: 'Attached bathroom' },
-              { name: 'Furnished' },
-              { name: 'Parking' },
-            ],
+      roomType: RoomType.SINGLE,
+      notes: '2BHK apartment. One bedroom available.',
+      amenities: ['WiFi', 'AC', 'Attached bathroom', 'Furnished', 'Parking'],
+    },
+  },
+  {
+    email: 'nikhil@fmr.test',
+    phone: '9876500010',
+    firstName: 'Nikhil',
+    age: 30,
+    gender: Gender.MALE,
+    occupation: 'Data Engineer',
+    jobTitle: 'DE',
+    bio: 'ITPL. Room in Whitefield — farther from ORR offices.',
+    workLocation: 'ITPL',
+    workMode: WorkMode.HYBRID,
+    intent: UserIntent.HAVE_ROOM,
+    minBudget: 9000,
+    maxBudget: 14000,
+    moveInDate: '2026-10-20',
+    sleepStart: 22,
+    sleepEnd: 6,
+    cleanliness: 4,
+    noiseTolerance: 2,
+    cookingFrequency: 3,
+    guestFrequency: 2,
+    foodPreference: FoodPreference.VEGETARIAN,
+    smokingPreference: SmokingPreference.NO,
+    smokingRequired: true,
+    alcoholPreference: AlcoholPreference.NO,
+    localities: ['Whitefield'],
+    languages: ['English', 'Hindi', 'Kannada'],
+    room: {
+      propertyType: PropertyType.APARTMENT,
+      locality: 'Whitefield',
+      exactAddress: 'ITPL Main Road, Whitefield',
+      monthlyRent: 26000,
+      roommateContribution: 13000,
+      deposit: 39000,
+      availableFrom: '2026-10-20',
+      sharingPermission: SharingPermission.YES,
+      roomType: RoomType.SINGLE,
+      notes: 'Walkable to ITPL. Men only.',
+      amenities: ['WiFi', 'AC', 'Furnished', 'Geyser', 'Power backup'],
+    },
+  },
+  {
+    email: 'sameer@fmr.test',
+    phone: '9876500011',
+    firstName: 'Sameer',
+    age: 27,
+    gender: Gender.MALE,
+    occupation: 'Support Engineer',
+    jobTitle: 'L2 Support',
+    bio: 'Electronic City Phase 1. Far from ORR — useful to see ranking.',
+    workLocation: 'Electronic City Phase 1',
+    workMode: WorkMode.OFFICE,
+    intent: UserIntent.HAVE_ROOM,
+    minBudget: 7000,
+    maxBudget: 10000,
+    moveInDate: '2026-10-18',
+    sleepStart: 22,
+    sleepEnd: 6,
+    cleanliness: 3,
+    noiseTolerance: 3,
+    cookingFrequency: 2,
+    guestFrequency: 2,
+    foodPreference: FoodPreference.BOTH,
+    smokingPreference: SmokingPreference.NO,
+    alcoholPreference: AlcoholPreference.SOCIALLY,
+    localities: ['Electronic City'],
+    languages: ['English', 'Hindi'],
+    room: {
+      propertyType: PropertyType.PG,
+      locality: 'Electronic City',
+      exactAddress: 'Neeladri Road, Electronic City',
+      monthlyRent: 16000,
+      roommateContribution: 8000,
+      deposit: 16000,
+      availableFrom: '2026-10-18',
+      sharingPermission: SharingPermission.YES,
+      roomType: RoomType.SHARED,
+      notes: 'PG near Phase 1 gate. Men only.',
+      amenities: ['WiFi', 'Food', 'Laundry'],
+    },
+  },
+  {
+    email: 'priya@fmr.test',
+    phone: '9876500004',
+    firstName: 'Priya',
+    age: 26,
+    gender: Gender.FEMALE,
+    occupation: 'Data Analyst',
+    jobTitle: 'Analyst',
+    bio: 'ITPL. Looking for a woman roommate in Whitefield or nearby.',
+    workLocation: 'ITPL',
+    workMode: WorkMode.HYBRID,
+    intent: UserIntent.NEED_ROOM,
+    minBudget: 9000,
+    maxBudget: 14000,
+    moveInDate: '2026-10-10',
+    sleepStart: 22,
+    sleepEnd: 6,
+    cleanliness: 5,
+    noiseTolerance: 2,
+    cookingFrequency: 3,
+    guestFrequency: 1,
+    foodPreference: FoodPreference.VEGETARIAN,
+    smokingPreference: SmokingPreference.NO,
+    smokingRequired: true,
+    alcoholPreference: AlcoholPreference.NO,
+    languageMatters: true,
+    localities: ['Whitefield', 'Marathahalli'],
+    languages: ['English', 'Hindi', 'Tamil'],
+  },
+  {
+    email: 'meera@fmr.test',
+    phone: '9876500012',
+    firstName: 'Meera',
+    age: 27,
+    gender: Gender.FEMALE,
+    occupation: 'Product Manager',
+    jobTitle: 'PM',
+    bio: 'Have a room near ITPL. Prefer a tidy working woman.',
+    workLocation: 'ITPL',
+    workMode: WorkMode.HYBRID,
+    intent: UserIntent.HAVE_ROOM,
+    minBudget: 10000,
+    maxBudget: 15000,
+    moveInDate: '2026-10-09',
+    sleepStart: 22,
+    sleepEnd: 6,
+    cleanliness: 5,
+    noiseTolerance: 2,
+    cookingFrequency: 3,
+    guestFrequency: 1,
+    foodPreference: FoodPreference.VEGETARIAN,
+    smokingPreference: SmokingPreference.NO,
+    smokingRequired: true,
+    alcoholPreference: AlcoholPreference.NO,
+    localities: ['Whitefield'],
+    languages: ['English', 'Hindi', 'Kannada'],
+    room: {
+      propertyType: PropertyType.APARTMENT,
+      locality: 'Whitefield',
+      exactAddress: 'Hope Farm Junction, Whitefield',
+      monthlyRent: 30000,
+      roommateContribution: 15000,
+      deposit: 45000,
+      availableFrom: '2026-10-09',
+      sharingPermission: SharingPermission.YES,
+      roomType: RoomType.SINGLE,
+      notes: '2BHK, women only. Landlord has approved sharing.',
+      amenities: ['WiFi', 'AC', 'Attached bathroom', 'Furnished', 'Housekeeping'],
+    },
+  },
+  {
+    email: 'sneha@fmr.test',
+    phone: '9876500013',
+    firstName: 'Sneha',
+    age: 25,
+    gender: Gender.FEMALE,
+    occupation: 'UX Designer',
+    jobTitle: 'Designer',
+    bio: 'Graphite / EPIP. Need a room in Whitefield.',
+    workLocation: 'EPIP Zone / Graphite India',
+    workMode: WorkMode.HYBRID,
+    intent: UserIntent.NEED_ROOM,
+    minBudget: 8500,
+    maxBudget: 13000,
+    moveInDate: '2026-10-11',
+    sleepStart: 23,
+    sleepEnd: 7,
+    cleanliness: 4,
+    noiseTolerance: 2,
+    cookingFrequency: 2,
+    guestFrequency: 2,
+    foodPreference: FoodPreference.BOTH,
+    smokingPreference: SmokingPreference.NO,
+    smokingRequired: true,
+    alcoholPreference: AlcoholPreference.SOCIALLY,
+    localities: ['Whitefield', 'Marathahalli'],
+    languages: ['English', 'Hindi', 'Telugu'],
+  },
+  {
+    email: 'ananya@fmr.test',
+    phone: '9876500014',
+    firstName: 'Ananya',
+    age: 28,
+    gender: Gender.FEMALE,
+    occupation: 'Consultant',
+    jobTitle: 'Consultant',
+    bio: 'Spare room in HSR. Work around Koramangala.',
+    workLocation: 'Koramangala offices',
+    workMode: WorkMode.HYBRID,
+    intent: UserIntent.HAVE_ROOM,
+    minBudget: 11000,
+    maxBudget: 16000,
+    moveInDate: '2026-10-14',
+    sleepStart: 22,
+    sleepEnd: 6,
+    cleanliness: 5,
+    noiseTolerance: 2,
+    cookingFrequency: 4,
+    guestFrequency: 2,
+    foodPreference: FoodPreference.VEGETARIAN,
+    smokingPreference: SmokingPreference.NO,
+    smokingRequired: true,
+    alcoholPreference: AlcoholPreference.NO,
+    localities: ['HSR', 'Koramangala'],
+    languages: ['English', 'Hindi'],
+    room: {
+      propertyType: PropertyType.APARTMENT,
+      locality: 'HSR',
+      exactAddress: '17th Cross, HSR Layout',
+      monthlyRent: 32000,
+      roommateContribution: 16000,
+      deposit: 48000,
+      availableFrom: '2026-10-14',
+      sharingPermission: SharingPermission.YES,
+      roomType: RoomType.SINGLE,
+      notes: 'Women only. 2BHK with balcony.',
+      amenities: ['WiFi', 'AC', 'Furnished', 'Parking', 'Geyser'],
+    },
+  },
+  {
+    email: 'kavya@fmr.test',
+    phone: '9876500015',
+    firstName: 'Kavya',
+    age: 26,
+    gender: Gender.FEMALE,
+    occupation: 'Software Engineer',
+    jobTitle: 'SDE-2',
+    bio: 'Prestige Tech Park. Room in Marathahalli.',
+    workLocation: 'Prestige Tech Park',
+    workMode: WorkMode.OFFICE,
+    intent: UserIntent.HAVE_ROOM,
+    minBudget: 8000,
+    maxBudget: 12000,
+    moveInDate: '2026-10-13',
+    sleepStart: 23,
+    sleepEnd: 7,
+    cleanliness: 4,
+    noiseTolerance: 3,
+    cookingFrequency: 2,
+    guestFrequency: 1,
+    foodPreference: FoodPreference.BOTH,
+    smokingPreference: SmokingPreference.NO,
+    alcoholPreference: AlcoholPreference.SOCIALLY,
+    localities: ['Marathahalli', 'Whitefield'],
+    languages: ['English', 'Kannada', 'Tamil'],
+    room: {
+      propertyType: PropertyType.PG,
+      locality: 'Marathahalli',
+      exactAddress: 'Kundalahalli gate',
+      monthlyRent: 20000,
+      roommateContribution: 10000,
+      deposit: 20000,
+      availableFrom: '2026-10-13',
+      sharingPermission: SharingPermission.REQUIRES_APPROVAL,
+      roomType: RoomType.DOUBLE,
+      notes: 'Women PG. Sharing needs warden approval.',
+      amenities: ['WiFi', 'Food', 'Laundry', 'Housekeeping', 'Attached bathroom'],
+    },
+  },
+  {
+    email: 'divya@fmr.test',
+    phone: '9876500016',
+    firstName: 'Divya',
+    age: 24,
+    gender: Gender.FEMALE,
+    occupation: 'Content Strategist',
+    jobTitle: 'Writer',
+    bio: 'HSR offices. Looking for a woman roommate in HSR or Koramangala.',
+    workLocation: 'HSR / BTM offices',
+    workMode: WorkMode.HYBRID,
+    intent: UserIntent.NEED_ROOM,
+    minBudget: 9000,
+    maxBudget: 15000,
+    moveInDate: '2026-10-16',
+    sleepStart: 23,
+    sleepEnd: 7,
+    cleanliness: 4,
+    noiseTolerance: 3,
+    cookingFrequency: 3,
+    guestFrequency: 2,
+    foodPreference: FoodPreference.VEGETARIAN,
+    smokingPreference: SmokingPreference.NO,
+    smokingRequired: true,
+    alcoholPreference: AlcoholPreference.SOCIALLY,
+    localities: ['HSR', 'Koramangala'],
+    languages: ['English', 'Hindi'],
+  },
+  {
+    email: 'isha@fmr.test',
+    phone: '9876500017',
+    firstName: 'Isha',
+    age: 29,
+    gender: Gender.FEMALE,
+    occupation: 'HR Business Partner',
+    jobTitle: 'HRBP',
+    bio: 'Electronic City. Far from Whitefield — should rank lower for ITPL seekers.',
+    workLocation: 'Electronic City Phase 1',
+    workMode: WorkMode.OFFICE,
+    intent: UserIntent.HAVE_ROOM,
+    minBudget: 7000,
+    maxBudget: 11000,
+    moveInDate: '2026-10-22',
+    sleepStart: 22,
+    sleepEnd: 6,
+    cleanliness: 4,
+    noiseTolerance: 2,
+    cookingFrequency: 3,
+    guestFrequency: 1,
+    foodPreference: FoodPreference.VEGETARIAN,
+    smokingPreference: SmokingPreference.NO,
+    smokingRequired: true,
+    alcoholPreference: AlcoholPreference.NO,
+    localities: ['Electronic City'],
+    languages: ['English', 'Hindi', 'Kannada'],
+    room: {
+      propertyType: PropertyType.PG,
+      locality: 'Electronic City',
+      exactAddress: 'Doddathoguru, Electronic City',
+      monthlyRent: 17000,
+      roommateContribution: 8500,
+      deposit: 17000,
+      availableFrom: '2026-10-22',
+      sharingPermission: SharingPermission.YES,
+      roomType: RoomType.SINGLE,
+      notes: 'Women PG near Phase 1.',
+      amenities: ['WiFi', 'Food', 'Laundry'],
+    },
+  },
+];
+
+async function main() {
+  const passwordHash = await bcrypt.hash('Password123!', 10);
+
+  const stale = await prisma.user.findMany({
+    where: { email: { endsWith: '@fmr.test' } },
+    select: { id: true },
+  });
+  const staleIds = stale.map((user) => user.id);
+  if (staleIds.length) {
+    await prisma.message.deleteMany({ where: { senderId: { in: staleIds } } });
+    await prisma.conversation.deleteMany({
+      where: { OR: [{ userAId: { in: staleIds } }, { userBId: { in: staleIds } }] },
+    });
+    await prisma.matchReason.deleteMany({
+      where: { match: { OR: [{ userAId: { in: staleIds } }, { userBId: { in: staleIds } }] } },
+    });
+    await prisma.match.deleteMany({
+      where: { OR: [{ userAId: { in: staleIds } }, { userBId: { in: staleIds } }] },
+    });
+    await prisma.interest.deleteMany({
+      where: { OR: [{ fromUserId: { in: staleIds } }, { toUserId: { in: staleIds } }] },
+    });
+    await prisma.block.deleteMany({
+      where: { OR: [{ fromUserId: { in: staleIds } }, { toUserId: { in: staleIds } }] },
+    });
+    await prisma.user.deleteMany({ where: { id: { in: staleIds } } });
+  }
+
+  const created: Record<string, { id: string; email: string }> = {};
+
+  for (const person of people) {
+    const user = await prisma.user.create({
+      data: {
+        email: person.email,
+        phone: person.phone,
+        passwordHash,
+        emailVerified: true,
+        phoneVerified: person.phoneVerified ?? true,
+        profile: {
+          create: {
+            firstName: person.firstName,
+            age: person.age,
+            gender: person.gender,
+            occupation: person.occupation,
+            jobTitle: person.jobTitle,
+            bio: person.bio,
+            city: 'Bengaluru',
+            workLocation: person.workLocation,
+            workMode: person.workMode,
+            intent: person.intent,
+            onboardingDone: true,
           },
         },
+        preferences: {
+          create: {
+            minBudget: person.minBudget,
+            maxBudget: person.maxBudget,
+            moveInDate: new Date(person.moveInDate),
+            sleepStart: person.sleepStart,
+            sleepEnd: person.sleepEnd,
+            cleanliness: person.cleanliness,
+            noiseTolerance: person.noiseTolerance,
+            cookingFrequency: person.cookingFrequency,
+            guestFrequency: person.guestFrequency,
+            foodPreference: person.foodPreference,
+            smokingPreference: person.smokingPreference,
+            smokingRequired: person.smokingRequired ?? false,
+            alcoholPreference: person.alcoholPreference,
+            pets: person.pets ?? false,
+            languageMatters: person.languageMatters ?? false,
+            localities: person.localities,
+          },
+        },
+        languages: { create: person.languages.map((language) => ({ language })) },
       },
-    },
-  });
+    });
+    created[person.firstName.toLowerCase()] = { id: user.id, email: user.email! };
 
-  console.log('Seeded users:', {
-    pankaj: pankaj.email,
-    arjun: arjun.email,
-    rahul: rahul.email,
-    priya: priya.email,
-    vivek: vivek.email,
-    password: 'Password123!',
-  });
+    if (person.room) {
+      await prisma.accommodation.create({
+        data: {
+          ownerUserId: user.id,
+          propertyType: person.room.propertyType,
+          locality: person.room.locality,
+          exactAddress: person.room.exactAddress,
+          monthlyRent: person.room.monthlyRent,
+          roommateContribution: person.room.roommateContribution,
+          deposit: person.room.deposit,
+          availableFrom: new Date(person.room.availableFrom),
+          sharingPermission: person.room.sharingPermission,
+          rooms: {
+            create: {
+              roomType: person.room.roomType,
+              capacity: 2,
+              currentOccupants: 1,
+              availableSlots: 1,
+              furnished: true,
+              notes: person.room.notes,
+              amenities: { create: person.room.amenities.map((name) => ({ name })) },
+            },
+          },
+        },
+      });
+    }
+  }
+
+  async function like(from: string, to: string) {
+    await prisma.interest.create({
+      data: { fromUserId: created[from].id, toUserId: created[to].id },
+    });
+  }
+
+  async function mutual(a: string, b: string, firstMessage: string, reply: string) {
+    await like(a, b);
+    await like(b, a);
+    const [userAId, userBId] = [created[a].id, created[b].id].sort();
+    const match = await prisma.match.create({
+      data: {
+        userAId,
+        userBId,
+        score: 92,
+        status: 'CHAT_STARTED',
+        reasons: {
+          create: [
+            { factor: 'office', kind: 'POSITIVE', score: 1, description: 'Same tech-park corridor' },
+            { factor: 'location', kind: 'POSITIVE', score: 1, description: 'Overlapping localities' },
+          ],
+        },
+        conversation: { create: { userAId, userBId } },
+      },
+      include: { conversation: true },
+    });
+    await prisma.message.createMany({
+      data: [
+        { conversationId: match.conversation!.id, senderId: created[a].id, body: firstMessage },
+        { conversationId: match.conversation!.id, senderId: created[b].id, body: reply },
+      ],
+    });
+  }
+
+  await mutual(
+    'arjun',
+    'pankaj',
+    'Hey Pankaj, I work at Ecoworld too. Is the PG open to one more person?',
+    'Yes — needs warden approval. We can chat here first.',
+  );
+  await like('vivek', 'arjun');
+  await like('rohan', 'pankaj');
+  await mutual(
+    'priya',
+    'meera',
+    'Hi Meera, I also work at ITPL. Is the room still free from 10 Oct?',
+    'Yes, Whitefield 2BHK, women only. Happy to show photos here.',
+  );
+  await like('sneha', 'priya');
+  await like('divya', 'ananya');
+
+  console.log('Seeded Alaya demo accounts (password Password123!)');
+  console.log('Men / ORR: arjun, pankaj, vivek, rohan, karan, dev, aditya');
+  console.log('Men / farther: rahul (HSR), nikhil (Whitefield), sameer (EC)');
+  console.log('Women / Whitefield: priya, meera, sneha, kavya');
+  console.log('Women / farther: ananya (HSR), divya (HSR), isha (EC)');
+  console.log('Demo: sign in as arjun@fmr.test — same-gender, Ecoworld-first ranking, existing chat with Pankaj.');
 }
 
 main()

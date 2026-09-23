@@ -58,7 +58,10 @@ export class ChatService {
       where: { id: conversation.matchId },
       data: { status: 'CHAT_STARTED' },
     });
-    return message;
+    return {
+      message,
+      otherUserId: conversation.userAId === userId ? conversation.userBId : conversation.userAId,
+    };
   }
 
   async requireParticipant(userId: string, conversationId: string) {

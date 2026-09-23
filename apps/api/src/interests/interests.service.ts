@@ -47,7 +47,7 @@ export class InterestsService {
         where: { OR: [{ userAId: userId }, { userBId: userId }] },
         include: {
           reasons: true,
-          conversation: true,
+          conversation: { include: { messages: { orderBy: { createdAt: 'desc' }, take: 1 } } },
           userA: { include: userInclude },
           userB: { include: userInclude },
         },
@@ -65,6 +65,7 @@ export class InterestsService {
           score: m.score,
           status: m.status,
           conversationId: m.conversation?.id ?? null,
+          lastMessage: m.conversation?.messages[0] ?? null,
           reasons: m.reasons,
           user: toPublicProfile(other),
         };

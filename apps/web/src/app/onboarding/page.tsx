@@ -1,6 +1,6 @@
 'use client';
 
-import { LANGUAGES, LOCALITIES } from '@fmr/shared';
+import { LANGUAGES, LOCALITIES, TECH_PARKS, officeLocalities } from '@fmr/shared';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
@@ -21,7 +21,7 @@ export default function OnboardingPage() {
     gender: 'MALE',
     occupation: '',
     bio: '',
-    workLocation: '',
+    workLocation: 'RMZ Ecoworld',
     workMode: 'HYBRID',
     localities: ['Bellandur'] as string[],
     minBudget: 8000,
@@ -172,21 +172,49 @@ export default function OnboardingPage() {
             <option value="REMOTE">Remote</option>
             <option value="STUDENT">Student</option>
           </select>
-          <input className="field" placeholder="Work location" value={form.workLocation} onChange={(e) => setForm({ ...form, workLocation: e.target.value })} />
+          <p className="text-xs text-muted">Same-gender matches only. Most PGs do not allow mixed sharing.</p>
         </div>
       )}
 
       {step === 2 && (
-        <div className="mt-8 grid grid-cols-2 gap-3">
-          {LOCALITIES.map((locality) => (
-            <button
-              key={locality}
-              onClick={() => setForm({ ...form, localities: toggle(form.localities, locality) })}
-              className={`rounded-lg border px-3 py-3 text-sm ${form.localities.includes(locality) ? 'border-clay bg-white' : 'border-sand bg-white'}`}
+        <div className="mt-8 space-y-5">
+          <div>
+            <p className="text-sm font-medium">Where do you work?</p>
+            <p className="mt-1 text-xs text-muted">We rank roommates near your tech park first, then farther corridors.</p>
+            <select
+              className="field mt-2"
+              value={form.workLocation}
+              onChange={(e) => {
+                const workLocation = e.target.value;
+                const nearby = officeLocalities(workLocation);
+                setForm({
+                  ...form,
+                  workLocation,
+                  localities: form.localities.length ? form.localities : nearby,
+                });
+              }}
             >
-              {locality}
-            </button>
-          ))}
+              {TECH_PARKS.map((park) => (
+                <option key={park.name} value={park.name}>
+                  {park.locality ? `${park.name} · ${park.locality}` : park.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <p className="text-sm font-medium">Where do you want to live?</p>
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              {LOCALITIES.map((locality) => (
+                <button
+                  key={locality}
+                  onClick={() => setForm({ ...form, localities: toggle(form.localities, locality) })}
+                  className={`rounded-lg border px-3 py-3 text-sm ${form.localities.includes(locality) ? 'border-clay bg-white' : 'border-sand bg-white'}`}
+                >
+                  {locality}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 

@@ -3,16 +3,26 @@
 import { AMENITIES, LOCALITIES } from '@fmr/shared';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { api, apiUpload } from '@/lib/api';
 
 export default function NewRoomPage() {
   const router = useRouter();
   const [error, setError] = useState('');
+  const [checking, setChecking] = useState(true);
   const [amenities, setAmenities] = useState<string[]>(['WiFi', 'AC']);
   const [photos, setPhotos] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
+
+  useEffect(() => {
+    api<{ id: string }[]>('/rooms/mine')
+      .then((rows) => {
+        if (rows[0]) router.replace(`/rooms/${rows[0].id}/edit`);
+        else setChecking(false);
+      })
+      .catch(() => setChecking(false));
+  }, [router]);
 
   function leave() {
     if (typeof window !== 'undefined' && window.history.length > 1) router.back();
@@ -48,6 +58,8 @@ export default function NewRoomPage() {
     }
   }
 
+  if (checking) return <p className="px-5 py-16 text-center text-muted">Loading…</p>;
+
   return (
     <div className="mx-auto max-w-xl px-5 py-10">
       <button type="button" onClick={leave} className="inline-flex items-center gap-2 text-sm text-muted hover:text-ink">
@@ -55,7 +67,7 @@ export default function NewRoomPage() {
         Back
       </button>
       <h1 className="mt-4 text-3xl font-semibold tracking-[-0.03em]">List your room</h1>
-      <p className="mt-3 text-sm text-ink/60">Exact address stays private. Ask whether sharing is actually allowed.</p>
+      <p className="mt-3 text-sm text-ink/60">One listing per person. Exact address stays private. Ask whether sharing is actually allowed.</p>
       <form onSubmit={onSubmit} className="mt-8 space-y-4">
         <select name="propertyType" className="field">
           <option value="PG">PG</option>

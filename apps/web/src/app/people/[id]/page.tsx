@@ -65,6 +65,7 @@ export default function PersonPage() {
         </div>
         <p className="mt-5 text-sm leading-6 text-ink/80">{person.bio}</p>
         <div className="mt-6 grid gap-2 text-sm md:grid-cols-2">
+          <p>Office: {person.workLocation || '—'}</p>
           <p>Budget: {person.minBudget && person.maxBudget ? `${inr(person.minBudget)}–${inr(person.maxBudget)}` : '—'}</p>
           <p>Localities: {person.localities.join(', ') || '—'}</p>
           <p>Languages: {person.languages.join(', ') || '—'}</p>

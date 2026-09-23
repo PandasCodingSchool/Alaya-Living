@@ -1,27 +1,30 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { FormEvent, useEffect, useRef, useState } from 'react';
-import { Compass, Heart, Home, MapPin, Plus, Search } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+import { Compass, Heart, Home, MessageCircle, Plus } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { useInbox } from '@/lib/inbox';
 import { Avatar } from './avatar';
+import { LocationPicker } from './location-picker';
 import { Logo } from './logo';
 
 const appLinks = [
   { href: '/discover', label: 'Discover', icon: Compass },
   { href: '/matches', label: 'Matches', icon: Heart },
+  { href: '/chat', label: 'Messages', icon: MessageCircle },
   { href: '/listings', label: 'Rooms', icon: Home },
 ];
 
 export function AppHeader() {
   const pathname = usePathname();
-  const router = useRouter();
   const { user, logout } = useAuth();
+  const { unreadCount } = useInbox();
   const [open, setOpen] = useState(false);
   const [incoming, setIncoming] = useState(0);
-  const [query, setQuery] = useState('');
+  const [listingId, setListingId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -29,6 +32,9 @@ export function AppHeader() {
     api<{ incoming: { id: string }[] }>('/interests')
       .then((data) => setIncoming(data.incoming?.length || 0))
       .catch(() => undefined);
+    api<{ id: string }[]>('/rooms/mine')
+      .then((rows) => setListingId(rows[0]?.id ?? null))
+      .catch(() => setListingId(null));
   }, [user]);
 
   useEffect(() => {
@@ -39,22 +45,11 @@ export function AppHeader() {
     return () => document.removeEventListener('mousedown', onClick);
   }, []);
 
-  function onSearch(event: FormEvent) {
-    event.preventDefault();
-    const next = query.trim();
-    router.push(next ? `/discover?q=${encodeURIComponent(next)}` : '/discover');
-  }
-
   return (
     <header className="sticky top-0 z-20 border-b border-sand/80 bg-white/85 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-5">
         <Logo href={user ? '/discover' : '/'} />
-        {user?.localities?.[0] && (
-          <span className="hidden items-center gap-1 rounded-full bg-[#FFE8F0] px-3 py-1 text-xs font-medium text-ink/80 lg:inline-flex">
-            <MapPin className="h-3 w-3 text-clay" />
-            {user.localities[0]}
-          </span>
-        )}
+        <LocationPicker />
 
         <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
           {appLinks.map((link) => {
@@ -74,26 +69,21 @@ export function AppHeader() {
                     {incoming}
                   </span>
                 )}
+                {link.href === '/chat' && unreadCount > 0 && (
+                  <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-clay px-1 text-[10px] text-white">
+                    {unreadCount}
+                  </span>
+                )}
               </Link>
             );
           })}
         </nav>
 
-        <form onSubmit={onSearch} className="relative hidden w-56 lg:block">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search people or rooms"
-            className="w-full rounded-full border border-sand bg-[#FFF6F0] py-2 pl-9 pr-3 text-sm outline-none focus:border-clay"
-          />
-        </form>
-
         {user ? (
           <div className="flex items-center gap-2">
-            <Link href="/rooms/new" className="btn-primary hidden h-10 px-4 sm:inline-flex">
+            <Link href={listingId ? `/rooms/${listingId}/edit` : '/rooms/new'} className="btn-primary hidden h-10 px-4 sm:inline-flex">
               <Plus className="mr-1 h-4 w-4" />
-              List a room
+              {listingId ? 'Edit listing' : 'List a room'}
             </Link>
             <div className="relative" ref={menuRef}>
               <button
@@ -113,8 +103,12 @@ export function AppHeader() {
                   <Link href="/profile" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-2 text-sm hover:bg-[#FFF1F5]">
                     View profile
                   </Link>
-                  <Link href="/rooms/new" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-2 text-sm hover:bg-[#FFF1F5] sm:hidden">
-                    List a room
+                  <Link
+                    href={listingId ? `/rooms/${listingId}/edit` : '/rooms/new'}
+                    onClick={() => setOpen(false)}
+                    className="block rounded-xl px-3 py-2 text-sm hover:bg-[#FFF1F5] sm:hidden"
+                  >
+                    {listingId ? 'Edit listing' : 'List a room'}
                   </Link>
                   <button
                     onClick={() => {
@@ -150,6 +144,9 @@ export function AppHeader() {
                 <link.icon className="h-4 w-4" />
                 {link.label}
                 {link.href === '/matches' && incoming > 0 && (
+                  <span className="absolute right-1 top-0 h-1.5 w-1.5 rounded-full bg-clay" />
+                )}
+                {link.href === '/chat' && unreadCount > 0 && (
                   <span className="absolute right-1 top-0 h-1.5 w-1.5 rounded-full bg-clay" />
                 )}
               </Link>

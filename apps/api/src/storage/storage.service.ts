@@ -1,12 +1,13 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { CreateBucketCommand, HeadBucketCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { CreateBucketCommand, GetObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { randomUUID } from 'crypto';
+import { Readable } from 'stream';
+import { apiPublicUrl } from '../lib/media-url';
 
 @Injectable()
 export class StorageService implements OnModuleInit {
   private readonly logger = new Logger(StorageService.name);
   private readonly bucket = process.env.S3_BUCKET || 'fmr-uploads';
-  private readonly publicBase = process.env.S3_PUBLIC_URL || 'http://localhost:9000/fmr-uploads';
   private client: S3Client | null = null;
 
   async onModuleInit() {
@@ -45,6 +46,25 @@ export class StorageService implements OnModuleInit {
         ContentType: file.mimetype,
       }),
     );
-    return `${this.publicBase}/${key}`;
+    return `${apiPublicUrl()}/files/${key}`;
+  }
+
+  async getObject(key: string) {
+    if (!this.client) return null;
+    try {
+      const object = await this.client.send(
+        new GetObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+        }),
+      );
+      if (!object.Body) return null;
+      return {
+        body: object.Body as Readable,
+        contentType: object.ContentType || 'application/octet-stream',
+      };
+    } catch {
+      return null;
+    }
   }
 }

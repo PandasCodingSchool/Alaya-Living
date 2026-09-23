@@ -26,6 +26,7 @@ export default function ProfilePage() {
           <p className="mt-2 font-mono text-[11px] text-muted">PROFILE {user.completion}%</p>
         </div>
         <div className="mt-6 space-y-2 text-sm">
+          <p>Office: {user.workLocation || '—'}</p>
           <p>Budget: {user.minBudget && user.maxBudget ? `${inr(user.minBudget)}–${inr(user.maxBudget)}` : '—'}</p>
           <p>Localities: {user.localities.join(', ')}</p>
           <p>Languages: {user.languages.join(', ')}</p>

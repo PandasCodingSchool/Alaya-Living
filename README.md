@@ -24,21 +24,23 @@ docker compose up --build
 
 Password for every seed account: `Password123!`
 
-| Email | Role | Locality |
-| --- | --- | --- |
-| pankaj@fmr.test | Has a Bellandur PG room (₹10,000 contribution) | Bellandur |
-| arjun@fmr.test | Needs a room | Bellandur |
-| rahul@fmr.test | Has an HSR apartment room | HSR |
-| priya@fmr.test | Needs a room | Whitefield / HSR |
-| vivek@fmr.test | Needs a room | Bellandur |
+Discover is **same-gender only**, and people/rooms near the viewer’s **tech park** rank first.
+
+| Email | Role | Office | Notes |
+| --- | --- | --- | --- |
+| arjun@fmr.test | Needs a room | RMZ Ecoworld | Already matched with Pankaj (chat ready) |
+| pankaj@fmr.test | Has Bellandur PG room | RMZ Ecoworld | Incoming interest from Rohan |
+| priya@fmr.test | Needs a room | ITPL | Already matched with Meera |
+| meera@fmr.test | Has Whitefield apartment | ITPL | Women-only listing |
+| vivek@fmr.test | Needs a room | Cessna | Phone not verified; liked Arjun |
 
 Suggested demo:
 
 1. Sign in as `arjun@fmr.test`.
-2. Open Discover → People. Pankaj should rank high, with reasons (same locality, similar budget, similar sleep).
-3. Open Pankaj, tap **Interested**.
-4. Sign out, sign in as `pankaj@fmr.test`, open Matches / incoming interest, tap **Interested**.
-5. Chat opens. Phone numbers and the exact PG address stay hidden.
+2. Open Discover → People. Ecoworld / Cessna / TechVillage men should appear first. Whitefield and Electronic City men later. No women.
+3. Open Matches — chat with Pankaj is already unlocked. Vivek sits under incoming interest.
+4. Sign in as `priya@fmr.test` to see the women-only Whitefield ranking.
+5. Contact stays hidden until a match; first 3 matches unlock phone/email, then Premium.
 
 Phone OTP in local/dev: request any valid 10-digit Indian mobile and enter `123456`. The code is also printed in the API logs.
 

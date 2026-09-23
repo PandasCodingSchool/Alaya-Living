@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { BadgeCheck, MapPin, Moon, Wallet } from 'lucide-react';
+import { BadgeCheck, Briefcase, MapPin, Moon, Wallet } from 'lucide-react';
 import type { Profile } from '@/lib/types';
 import { hourLabel, inr } from '@/lib/format';
 import { Avatar } from './avatar';
@@ -27,6 +27,9 @@ export function MatchCard({ person }: { person: Profile }) {
         <div className="mt-4 flex flex-wrap gap-1.5">
           {person.minBudget && person.maxBudget && (
             <span className="chip"><Wallet className="mr-1 h-3 w-3" />{inr(person.minBudget)}–{inr(person.maxBudget)}</span>
+          )}
+          {person.workLocation && (
+            <span className="chip"><Briefcase className="mr-1 h-3 w-3" />{person.workLocation}</span>
           )}
           {person.localities.slice(0, 2).map((locality) => (
             <span key={locality} className="chip"><MapPin className="mr-1 h-3 w-3" />{locality}</span>
