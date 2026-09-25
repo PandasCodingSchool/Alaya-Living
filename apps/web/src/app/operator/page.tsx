@@ -8,7 +8,7 @@ import { Avatar } from '@/components/avatar';
 import { PgCard } from '@/components/pg-card';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import type { PgOperatorDashboard } from '@/lib/types';
+import type { InterestState, PgOperatorDashboard } from '@/lib/types';
 
 function Stat({ label, value, icon: Icon }: { label: string; value: number; icon: typeof Building2 }) {
   return (
@@ -31,6 +31,13 @@ export default function OperatorDashboardPage() {
   const { user, loading } = useAuth();
   const [data, setData] = useState<PgOperatorDashboard | null>(null);
   const [error, setError] = useState('');
+  const [replying, setReplying] = useState<string | null>(null);
+
+  function load() {
+    api<PgOperatorDashboard>('/pgs/dashboard')
+      .then(setData)
+      .catch((err) => setError(err instanceof Error ? err.message : 'Could not load dashboard'));
+  }
 
   const allowed = user?.role === 'PG_OWNER' || user?.role === 'ADMIN';
 
@@ -41,10 +48,22 @@ export default function OperatorDashboardPage() {
       router.replace('/discover');
       return;
     }
-    api<PgOperatorDashboard>('/pgs/dashboard')
-      .then(setData)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Could not load dashboard'));
+    load();
   }, [user, loading, allowed, router]);
+
+  async function replyToInquiry(seekerId: string) {
+    setReplying(seekerId);
+    try {
+      const next = await api<InterestState>('/interests', {
+        method: 'POST',
+        body: JSON.stringify({ toUserId: seekerId }),
+      });
+      load();
+      if (next.conversationId) router.push(`/chat/${next.conversationId}`);
+    } finally {
+      setReplying(null);
+    }
+  }
 
   if (loading || !user) {
     return <p className="px-5 py-16 text-center text-muted">Loading…</p>;
@@ -80,10 +99,7 @@ export default function OperatorDashboardPage() {
       </div>
 
       <section className="mt-10">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Your PG listings</h2>
-          <Link href="/pgs" className="text-sm text-clay">Browse marketplace</Link>
-        </div>
+        <h2 className="text-lg font-semibold">Your PG listings</h2>
         {data.listings.length ? (
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             {data.listings.map((pg) => <PgCard key={pg.id} pg={pg} />)}
@@ -97,10 +113,11 @@ export default function OperatorDashboardPage() {
       </section>
 
       <section className="mt-10">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Recent inquiries</h2>
-          <Link href="/matches" className="text-sm text-clay">Open matches</Link>
-        </div>
+        <h2 className="text-lg font-semibold">Leads & inquiries</h2>
+        <p className="mt-2 text-sm text-muted">
+          When a seeker taps <strong className="font-medium text-ink">Message operator</strong> on your PG listing, they show up here.
+          Tap <strong className="font-medium text-ink">Reply</strong> to open chat.
+        </p>
         {data.inquiries.length ? (
           <div className="panel mt-4 divide-y divide-sand">
             {data.inquiries.map((inquiry) => (
@@ -111,19 +128,33 @@ export default function OperatorDashboardPage() {
                     <p className="font-medium">{inquiry.user.name}</p>
                     <p className="text-xs text-muted">
                       {inquiry.user.occupation || 'Seeker'} · {new Date(inquiry.createdAt).toLocaleDateString('en-IN')}
+                      {inquiry.matched ? ' · Chat open' : ' · Waiting for your reply'}
                     </p>
                   </div>
                 </div>
-                <Link href={`/people/${inquiry.user.id}`} className="btn-ghost px-4 py-2 text-sm">
-                  View profile
-                </Link>
+                <div className="flex flex-wrap gap-2">
+                  {inquiry.conversationId ? (
+                    <Link href={`/chat/${inquiry.conversationId}`} className="btn-primary px-4 py-2 text-sm">
+                      Open chat
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={replying === inquiry.user.id}
+                      onClick={() => replyToInquiry(inquiry.user.id)}
+                      className="btn-primary px-4 py-2 text-sm"
+                    >
+                      {replying === inquiry.user.id ? 'Opening…' : 'Reply'}
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         ) : (
           <div className="panel mt-4 flex items-center gap-3 p-5 text-sm text-muted">
             <Users className="h-4 w-4 shrink-0" />
-            Inquiries appear here when seekers message you from a PG listing.
+            No inquiries yet. Share your PG listing — leads arrive when seekers message you from the listing page.
           </div>
         )}
       </section>

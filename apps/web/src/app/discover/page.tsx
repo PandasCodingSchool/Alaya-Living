@@ -8,6 +8,7 @@ import { MatchCard } from '@/components/match-card';
 import { RoomCard } from '@/components/room-card';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { usePgOperatorGuard } from '@/lib/use-pg-operator-guard';
 import { inr } from '@/lib/format';
 import type { Profile, Room } from '@/lib/types';
 
@@ -28,6 +29,7 @@ export default function DiscoverPage() {
 }
 
 function DiscoverInner() {
+  const { blocked } = usePgOperatorGuard();
   const { user, loading, refresh } = useAuth();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState((searchParams.get('q') || '').trim());
@@ -117,6 +119,7 @@ function DiscoverInner() {
   }, [rooms, filters, query]);
 
   if (loading) return <p className="px-5 py-16 text-center text-muted">Loading…</p>;
+  if (blocked) return null;
   if (!user) {
     return (
       <p className="px-5 py-16 text-center">

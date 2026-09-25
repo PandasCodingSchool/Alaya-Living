@@ -37,7 +37,7 @@ export class GroupsService {
         locality: row.localities.length ? { in: row.localities } : undefined,
         monthlyRent: { lte: Math.round(row.targetRentEach * 1.15) },
       },
-      include: { owner: { include: userInclude } },
+      include: { owner: { include: userInclude }, sharingOptions: true },
       take: 8,
       orderBy: { createdAt: 'desc' },
     });
@@ -208,6 +208,7 @@ export class GroupsService {
     photos: string[];
     amenities: string[];
     availableFrom: Date;
+    sharingOptions: { sharingType: string; monthlyRent: number; bedsAvailable: number; totalBeds: number }[];
     owner: Parameters<typeof toPublicProfile>[0];
   }) {
     return {
@@ -221,6 +222,7 @@ export class GroupsService {
       mealsIncluded: pg.mealsIncluded,
       bedsAvailable: pg.bedsAvailable,
       totalBeds: pg.totalBeds,
+      sharingOptions: pg.sharingOptions,
       photos: pg.photos.map((photo) => publicMediaUrl(photo) || photo),
       amenities: pg.amenities,
       availableFrom: pg.availableFrom.toISOString(),

@@ -158,7 +158,29 @@ export interface PgOperatorDashboard {
     inquiries: number;
   };
   listings: PgListing[];
-  inquiries: { id: string; createdAt: string; user: Profile }[];
+  inquiries: {
+    id: string;
+    createdAt: string;
+    user: Profile;
+    matched: boolean;
+    conversationId: string | null;
+  }[];
+}
+
+export interface PgSharingOption {
+  sharingType: 'SINGLE' | 'DOUBLE' | 'TRIPLE';
+  monthlyRent: number;
+  bedsAvailable: number;
+  totalBeds: number;
+}
+
+export interface PgBed {
+  id: string;
+  roomLabel: string;
+  bedLabel: string;
+  sharingType: 'SINGLE' | 'DOUBLE' | 'TRIPLE';
+  monthlyRent: number;
+  status: 'AVAILABLE' | 'OCCUPIED';
 }
 
 export interface PgListing {
@@ -174,6 +196,8 @@ export interface PgListing {
   sharingPermission: string;
   bedsAvailable: number;
   totalBeds: number;
+  sharingOptions?: PgSharingOption[];
+  beds?: PgBed[];
   photos: string[];
   amenities: string[];
   notes?: string | null;

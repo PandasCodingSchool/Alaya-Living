@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
+import { BedInventoryForm, bedsFromListing, bedsToPayload, type BedDraft } from '@/components/pg-bed-inventory';
 import { api, apiUpload } from '@/lib/api';
 import type { PgListing } from '@/lib/types';
 
@@ -14,12 +15,16 @@ export default function EditPgPage() {
   const [pg, setPg] = useState<PgListing | null>(null);
   const [error, setError] = useState('');
   const [amenities, setAmenities] = useState<string[]>([]);
+  const [beds, setBeds] = useState<BedDraft[]>([]);
 
   useEffect(() => {
-    api<PgListing>(`/pgs/${params.id}`).then((row) => {
-      setPg(row);
-      setAmenities(row.amenities);
-    });
+    api<PgListing>(`/pgs/${params.id}`)
+      .then((row) => {
+        setPg(row);
+        setAmenities(row.amenities);
+        setBeds(bedsFromListing(row.beds));
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : 'Could not load PG'));
   }, [params.id]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -32,16 +37,14 @@ export default function EditPgPage() {
         body: JSON.stringify({
           title: data.get('title'),
           locality: data.get('locality'),
-          monthlyRent: Number(data.get('monthlyRent')),
           deposit: Number(data.get('deposit') || 0) || undefined,
           genderPolicy: data.get('genderPolicy'),
           mealsIncluded: data.get('mealsIncluded') === 'on',
           sharingPermission: data.get('sharingPermission'),
-          bedsAvailable: Number(data.get('bedsAvailable')),
-          totalBeds: Number(data.get('totalBeds')),
           availableFrom: data.get('availableFrom'),
           amenities,
           notes: data.get('notes'),
+          beds: bedsToPayload(beds),
         }),
       });
       router.push(`/pgs/${params.id}`);
@@ -56,7 +59,7 @@ export default function EditPgPage() {
     setPg(updated);
   }
 
-  if (!pg) return <p className="px-5 py-16 text-center text-muted">Loading…</p>;
+  if (!pg) return <p className="px-5 py-16 text-center text-muted">{error || 'Loading…'}</p>;
 
   return (
     <div className="mx-auto max-w-xl px-4 py-8 sm:px-5 sm:py-10">
@@ -69,12 +72,8 @@ export default function EditPgPage() {
         <select name="locality" defaultValue={pg.locality} className="field" required>
           {LOCALITIES.map((locality) => <option key={locality}>{locality}</option>)}
         </select>
-        <input name="monthlyRent" type="number" required defaultValue={pg.monthlyRent} className="field" />
+        <BedInventoryForm beds={beds} onChange={setBeds} />
         <input name="deposit" type="number" defaultValue={pg.deposit ?? ''} className="field" />
-        <div className="grid grid-cols-2 gap-3">
-          <input name="bedsAvailable" type="number" required defaultValue={pg.bedsAvailable} className="field" />
-          <input name="totalBeds" type="number" required defaultValue={pg.totalBeds} className="field" />
-        </div>
         <select name="genderPolicy" defaultValue={pg.genderPolicy} className="field">
           <option value="ANY">Co-ed</option>
           <option value="MALE">Men only</option>

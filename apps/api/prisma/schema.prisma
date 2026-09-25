@@ -243,6 +243,17 @@ enum PgGenderPolicy {
   ANY
 }
 
+enum PgSharingType {
+  SINGLE
+  DOUBLE
+  TRIPLE
+}
+
+enum PgBedStatus {
+  AVAILABLE
+  OCCUPIED
+}
+
 model Room {
   id               String        @id @default(cuid())
   accommodationId  String
@@ -431,6 +442,34 @@ model PgListing {
   status            RoomStatus       @default(ACTIVE)
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
+  sharingOptions    PgSharingOption[]
+  beds              PgBed[]
+}
+
+model PgSharingOption {
+  id            String        @id @default(cuid())
+  pgListingId   String
+  pgListing     PgListing     @relation(fields: [pgListingId], references: [id], onDelete: Cascade)
+  sharingType   PgSharingType
+  monthlyRent   Int
+  bedsAvailable Int           @default(0)
+  totalBeds     Int           @default(1)
+
+  @@unique([pgListingId, sharingType])
+}
+
+model PgBed {
+  id            String        @id @default(cuid())
+  pgListingId   String
+  pgListing     PgListing     @relation(fields: [pgListingId], references: [id], onDelete: Cascade)
+  roomLabel     String
+  bedLabel      String
+  sharingType   PgSharingType
+  monthlyRent   Int
+  status        PgBedStatus   @default(AVAILABLE)
+  sortOrder     Int           @default(0)
+
+  @@unique([pgListingId, roomLabel, bedLabel])
 }
 
 model Block {

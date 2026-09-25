@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   Patch,
@@ -12,27 +13,76 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { PgGenderPolicy, PropertyType, SharingPermission, User, UserRole } from '@prisma/client';
+import { PgBedStatus, PgGenderPolicy, PgSharingType, PropertyType, SharingPermission, User, UserRole } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsDateString, IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsDateString,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { PgsService } from './pgs.service';
 
-class QuickPgDto {
-  @IsOptional()
+class SharingOptionDto {
+  @IsEnum(PgSharingType)
+  sharingType!: PgSharingType;
+
   @Type(() => Number)
   @IsInt()
   @Min(1000)
-  monthlyRent?: number;
+  monthlyRent!: number;
 
-  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(0)
-  bedsAvailable?: number;
+  bedsAvailable!: number;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  totalBeds!: number;
+}
+
+class BedDto {
+  @IsString()
+  roomLabel!: string;
+
+  @IsString()
+  bedLabel!: string;
+
+  @IsEnum(PgSharingType)
+  sharingType!: PgSharingType;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1000)
+  monthlyRent!: number;
+
+  @IsEnum(PgBedStatus)
+  status!: PgBedStatus;
+}
+
+class QuickPgDto {
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SharingOptionDto)
+  sharingOptions?: SharingOptionDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BedDto)
+  beds?: BedDto[];
 }
 
 class CreatePgDto {
@@ -46,10 +96,11 @@ class CreatePgDto {
   @IsEnum(PropertyType)
   propertyType?: PropertyType;
 
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1000)
-  monthlyRent!: number;
+  monthlyRent?: number;
 
   @IsOptional()
   @Type(() => Number)
@@ -82,6 +133,18 @@ class CreatePgDto {
 
   @IsOptional()
   @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SharingOptionDto)
+  sharingOptions?: SharingOptionDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BedDto)
+  beds?: BedDto[];
+
+  @IsOptional()
+  @IsArray()
   @IsString({ each: true })
   amenities?: string[];
 
@@ -104,11 +167,15 @@ export class PgsController {
 
   @Get()
   list(
+    @CurrentUser() user: User,
     @Query('locality') locality?: string,
     @Query('minBudget') minBudget?: string,
     @Query('maxBudget') maxBudget?: string,
     @Query('gender') gender?: PgGenderPolicy,
   ) {
+    if (user.role === UserRole.PG_OWNER) {
+      throw new ForbiddenException('PG operators manage listings from the dashboard — marketplace browse is for seekers only');
+    }
     return this.pgs.list({
       locality,
       minBudget: minBudget ? Number(minBudget) : undefined,
@@ -130,8 +197,8 @@ export class PgsController {
   }
 
   @Get(':id')
-  get(@Param('id') id: string) {
-    return this.pgs.get(id);
+  get(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.pgs.get(user, id);
   }
 
   @Post()

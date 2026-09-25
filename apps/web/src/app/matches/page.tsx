@@ -7,6 +7,7 @@ import { Avatar } from '@/components/avatar';
 import { ContactReveal } from '@/components/contact-reveal';
 import { Reasons } from '@/components/reasons';
 import { api } from '@/lib/api';
+import { usePgOperatorGuard } from '@/lib/use-pg-operator-guard';
 import type { Agreement, CompatibilityReason, Profile } from '@/lib/types';
 
 interface MatchRow {
@@ -27,12 +28,14 @@ interface InterestBundle {
 
 export default function MatchesPage() {
   const router = useRouter();
+  const { blocked } = usePgOperatorGuard();
   const [data, setData] = useState<InterestBundle | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
+    if (blocked) return;
     api<InterestBundle>('/interests').then(setData);
-  }, []);
+  }, [blocked]);
 
   async function createAgreement(matchId: string) {
     setBusy(matchId);
@@ -47,6 +50,7 @@ export default function MatchesPage() {
     }
   }
 
+  if (blocked) return null;
   if (!data) return <p className="px-5 py-16 text-center">Loading…</p>;
 
   return (

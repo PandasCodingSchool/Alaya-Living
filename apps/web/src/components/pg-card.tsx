@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { BadgeCheck, BedDouble, MapPin, Utensils } from 'lucide-react';
+import { bedInventorySummary } from '@/components/pg-bed-inventory';
 import type { PgListing } from '@/lib/types';
-import { inr, prettyEnum } from '@/lib/format';
+import { prettyEnum } from '@/lib/format';
 import { roomPhotoFor } from '@/lib/media';
 
 export function PgCard({ pg }: { pg: PgListing }) {
@@ -17,9 +18,18 @@ export function PgCard({ pg }: { pg: PgListing }) {
           )}
         </div>
         <p className="mt-1 text-xl font-semibold">
-          {inr(pg.monthlyRent)}
-          <span className="text-sm font-medium text-muted"> / bed</span>
+          {bedInventorySummary(pg.beds, pg.sharingOptions, pg.monthlyRent)}
         </p>
+        {(pg.beds?.length ? pg.beds.filter((bed) => bed.status === 'AVAILABLE').slice(0, 3) : []).map((bed) => (
+          <p key={bed.id} className="mt-1 text-xs text-muted">
+            {bed.roomLabel} · Bed {bed.bedLabel} open
+          </p>
+        ))}
+        {!pg.beds?.length && pg.sharingOptions?.filter((row) => row.totalBeds > 0).slice(0, 3).map((row) => (
+          <p key={row.sharingType} className="mt-1 text-xs text-muted">
+            {row.sharingType === 'SINGLE' ? 'Single' : row.sharingType === 'DOUBLE' ? 'Double' : 'Triple'}: {row.bedsAvailable} open
+          </p>
+        ))}
         <p className="mt-1 flex items-center gap-1 text-sm text-muted">
           <MapPin className="h-3.5 w-3.5" /> {pg.locality} · {prettyEnum(pg.genderPolicy)} only
         </p>

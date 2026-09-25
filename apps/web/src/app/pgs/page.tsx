@@ -3,26 +3,35 @@
 import { LOCALITIES } from '@fmr/shared';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { PgCard } from '@/components/pg-card';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { isPgOperator } from '@/lib/routes';
 import type { PgListing } from '@/lib/types';
 
 export default function PgsPage() {
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, loading } = useAuth();
   const [rows, setRows] = useState<PgListing[]>([]);
-  const [mine, setMine] = useState<PgListing[]>([]);
   const [locality, setLocality] = useState('');
   const [gender, setGender] = useState('');
 
   useEffect(() => {
+    if (loading) return;
+    if (isPgOperator(user)) {
+      router.replace('/operator');
+      return;
+    }
     if (!user) return;
     const params = new URLSearchParams();
     if (locality) params.set('locality', locality);
     if (gender) params.set('gender', gender);
     api<PgListing[]>(`/pgs?${params}`).then(setRows).catch(() => setRows([]));
-    api<PgListing[]>('/pgs/mine').then(setMine).catch(() => setMine([]));
-  }, [user, locality, gender]);
+  }, [user, loading, locality, gender, router]);
+
+  if (loading) return <p className="px-5 py-16 text-center text-muted">Loading…</p>;
+  if (isPgOperator(user)) return null;
 
   if (!user) {
     return (
@@ -39,10 +48,9 @@ export default function PgsPage() {
           <p className="text-sm text-muted"><Link href="/living" className="text-clay">Living</Link> · PG marketplace</p>
           <h1 className="mt-1 text-3xl font-semibold">PG beds</h1>
           <p className="mt-2 text-sm text-muted">
-            Whole beds with meals and gender policy — not a roommate share of someone&apos;s room.
+            Browse single, double, and triple sharing with rent and vacancy per type.
           </p>
         </div>
-        <Link href="/pgs/new" className="btn-primary">List a PG</Link>
       </div>
 
       <div className="mt-6 flex flex-wrap gap-2">
@@ -67,15 +75,6 @@ export default function PgsPage() {
           <option value="ANY">Co-ed</option>
         </select>
       </div>
-
-      {mine.length > 0 && (
-        <section className="mt-10">
-          <h2 className="text-lg font-semibold">Your listings</h2>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            {mine.map((pg) => <PgCard key={pg.id} pg={pg} />)}
-          </div>
-        </section>
-      )}
 
       <section className="mt-10">
         <h2 className="text-lg font-semibold">Available beds</h2>

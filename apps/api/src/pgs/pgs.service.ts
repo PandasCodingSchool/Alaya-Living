@@ -1,5 +1,5 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { PgGenderPolicy, PropertyType, SharingPermission, User } from '@prisma/client';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { PgBedStatus, PgGenderPolicy, PgSharingType, Prisma, PropertyType, SharingPermission, User, UserRole } from '@prisma/client';
 import { coordsForLocality } from '../lib/geo';
 import { publicMediaUrl } from '../lib/media-url';
 import { PrismaService } from '../prisma/prisma.service';
@@ -7,29 +7,36 @@ import { StorageService } from '../storage/storage.service';
 import { UsersService } from '../users/users.service';
 import { toPublicProfile, userInclude } from '../users/user.mapper';
 
-export function toPublicPg(pg: {
-  id: string;
-  title: string;
-  locality: string;
-  city: string;
-  propertyType: string;
+const SHARING_ORDER: PgSharingType[] = ['SINGLE', 'DOUBLE', 'TRIPLE'];
+const BEDS_PER_ROOM: Record<PgSharingType, number> = { SINGLE: 1, DOUBLE: 2, TRIPLE: 3 };
+
+export type SharingOptionInput = {
+  sharingType: PgSharingType;
   monthlyRent: number;
-  deposit: number | null;
-  genderPolicy: string;
-  mealsIncluded: boolean;
-  sharingPermission: string;
   bedsAvailable: number;
   totalBeds: number;
-  photos: string[];
-  amenities: string[];
-  notes: string | null;
-  availableFrom: Date;
-  exactAddress: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  status: string;
-  owner: Parameters<typeof toPublicProfile>[0];
-}) {
+};
+
+export type BedInput = {
+  roomLabel: string;
+  bedLabel: string;
+  sharingType: PgSharingType;
+  monthlyRent: number;
+  status: PgBedStatus;
+};
+
+const pgInclude = {
+  owner: { include: userInclude },
+  sharingOptions: true,
+  beds: { orderBy: [{ sortOrder: 'asc' }, { roomLabel: 'asc' }, { bedLabel: 'asc' }] },
+} satisfies Prisma.PgListingInclude;
+
+type PgWithOwner = Prisma.PgListingGetPayload<{ include: typeof pgInclude }>;
+
+export function toPublicPg(pg: PgWithOwner) {
+  const sharingOptions = [...pg.sharingOptions].sort(
+    (a, b) => SHARING_ORDER.indexOf(a.sharingType) - SHARING_ORDER.indexOf(b.sharingType),
+  );
   return {
     id: pg.id,
     title: pg.title,
@@ -43,6 +50,15 @@ export function toPublicPg(pg: {
     sharingPermission: pg.sharingPermission,
     bedsAvailable: pg.bedsAvailable,
     totalBeds: pg.totalBeds,
+    sharingOptions: sharingOptions ?? [],
+    beds: (pg.beds ?? []).map((bed) => ({
+      id: bed.id,
+      roomLabel: bed.roomLabel,
+      bedLabel: bed.bedLabel,
+      sharingType: bed.sharingType,
+      monthlyRent: bed.monthlyRent,
+      status: bed.status,
+    })),
     photos: pg.photos.map((photo) => publicMediaUrl(photo) || photo),
     amenities: pg.amenities,
     notes: pg.notes,
@@ -75,7 +91,7 @@ export class PgsService {
           lte: query.maxBudget,
         },
       },
-      include: { owner: { include: userInclude } },
+      include: pgInclude,
       orderBy: { createdAt: 'desc' },
     });
     return rows.map((row) => toPublicPg(row));
@@ -84,7 +100,7 @@ export class PgsService {
   async mine(userId: string) {
     const rows = await this.prisma.pgListing.findMany({
       where: { ownerUserId: userId },
-      include: { owner: { include: userInclude } },
+      include: pgInclude,
       orderBy: { createdAt: 'desc' },
     });
     return rows.map((row) => toPublicPg(row));
@@ -94,7 +110,7 @@ export class PgsService {
     const [listings, inquiries, inquiryCount] = await Promise.all([
       this.prisma.pgListing.findMany({
         where: { ownerUserId: userId },
-        include: { owner: { include: userInclude } },
+        include: pgInclude,
         orderBy: { updatedAt: 'desc' },
       }),
       this.prisma.interest.findMany({
@@ -109,6 +125,23 @@ export class PgsService {
     const publicListings = listings.map((row) => toPublicPg(row));
     const activeListings = listings.filter((row) => row.status === 'ACTIVE' && row.bedsAvailable > 0);
 
+    const inquiryRows = await Promise.all(
+      inquiries.map(async (row) => {
+        const [userAId, userBId] = [row.fromUserId, userId].sort();
+        const match = await this.prisma.match.findUnique({
+          where: { userAId_userBId: { userAId, userBId } },
+          include: { conversation: true },
+        });
+        return {
+          id: row.id,
+          createdAt: row.createdAt.toISOString(),
+          user: toPublicProfile(row.fromUser),
+          matched: !!match,
+          conversationId: match?.conversation?.id ?? null,
+        };
+      }),
+    );
+
     return {
       summary: {
         listings: listings.length,
@@ -118,20 +151,19 @@ export class PgsService {
         inquiries: inquiryCount,
       },
       listings: publicListings,
-      inquiries: inquiries.map((row) => ({
-        id: row.id,
-        createdAt: row.createdAt.toISOString(),
-        user: toPublicProfile(row.fromUser),
-      })),
+      inquiries: inquiryRows,
     };
   }
 
-  async get(id: string) {
+  async get(viewer: User, id: string) {
     const row = await this.prisma.pgListing.findUnique({
       where: { id },
-      include: { owner: { include: userInclude } },
+      include: pgInclude,
     });
     if (!row) throw new NotFoundException('PG not found');
+    if (viewer.role === UserRole.PG_OWNER && row.ownerUserId !== viewer.id) {
+      throw new ForbiddenException('PG operators can only view their own listings');
+    }
     return toPublicPg(row);
   }
 
@@ -141,43 +173,47 @@ export class PgsService {
       title: string;
       locality: string;
       propertyType?: PropertyType;
-      monthlyRent: number;
+      monthlyRent?: number;
       deposit?: number;
       genderPolicy?: PgGenderPolicy;
       mealsIncluded?: boolean;
       sharingPermission?: SharingPermission;
       bedsAvailable?: number;
       totalBeds?: number;
+      sharingOptions?: SharingOptionInput[];
+      beds?: BedInput[];
       amenities?: string[];
       notes?: string;
       availableFrom: string;
       exactAddress?: string;
     },
   ) {
+    const inventory = this.resolveInventory(dto);
     const pin = coordsForLocality(dto.locality);
-    const bedsAvailable = dto.bedsAvailable ?? 1;
     const row = await this.prisma.pgListing.create({
       data: {
         ownerUserId: user.id,
         title: dto.title,
         locality: dto.locality,
         propertyType: dto.propertyType || 'PG',
-        monthlyRent: dto.monthlyRent,
+        monthlyRent: inventory.aggregates.monthlyRent,
         deposit: dto.deposit,
         genderPolicy: dto.genderPolicy || 'ANY',
         mealsIncluded: dto.mealsIncluded ?? false,
         sharingPermission: dto.sharingPermission || 'YES',
-        bedsAvailable,
-        totalBeds: dto.totalBeds ?? 4,
+        bedsAvailable: inventory.aggregates.bedsAvailable,
+        totalBeds: inventory.aggregates.totalBeds,
         amenities: dto.amenities || [],
         notes: dto.notes,
         availableFrom: new Date(dto.availableFrom),
         exactAddress: dto.exactAddress,
         latitude: pin?.lat,
         longitude: pin?.lng,
-        status: this.statusForBeds(bedsAvailable),
+        status: this.statusForBeds(inventory.aggregates.bedsAvailable),
+        beds: { create: inventory.beds },
+        sharingOptions: { create: inventory.tiers },
       },
-      include: { owner: { include: userInclude } },
+      include: pgInclude,
     });
     await this.users.ensurePgOwner(user.id);
     return toPublicPg(row);
@@ -187,50 +223,178 @@ export class PgsService {
     const row = await this.prisma.pgListing.findUnique({ where: { id } });
     if (!row) throw new NotFoundException('PG not found');
     if (row.ownerUserId !== user.id) throw new ForbiddenException();
+    const inventory = this.resolveInventory(dto);
     const pin = coordsForLocality(dto.locality);
-    const bedsAvailable = dto.bedsAvailable ?? row.bedsAvailable;
+    await this.prisma.pgBed.deleteMany({ where: { pgListingId: id } });
+    await this.prisma.pgSharingOption.deleteMany({ where: { pgListingId: id } });
     const updated = await this.prisma.pgListing.update({
       where: { id },
       data: {
         title: dto.title,
         locality: dto.locality,
         propertyType: dto.propertyType || row.propertyType,
-        monthlyRent: dto.monthlyRent,
+        monthlyRent: inventory.aggregates.monthlyRent,
         deposit: dto.deposit,
         genderPolicy: dto.genderPolicy || row.genderPolicy,
         mealsIncluded: dto.mealsIncluded ?? row.mealsIncluded,
         sharingPermission: dto.sharingPermission || row.sharingPermission,
-        bedsAvailable,
-        totalBeds: dto.totalBeds ?? row.totalBeds,
+        bedsAvailable: inventory.aggregates.bedsAvailable,
+        totalBeds: inventory.aggregates.totalBeds,
         amenities: dto.amenities || row.amenities,
         notes: dto.notes,
         availableFrom: new Date(dto.availableFrom),
         exactAddress: dto.exactAddress,
         latitude: pin?.lat,
         longitude: pin?.lng,
-        status: this.statusForBeds(bedsAvailable),
+        status: this.statusForBeds(inventory.aggregates.bedsAvailable),
+        beds: { create: inventory.beds },
+        sharingOptions: { create: inventory.tiers },
       },
-      include: { owner: { include: userInclude } },
+      include: pgInclude,
     });
     return toPublicPg(updated);
   }
 
-  async quickUpdate(user: User, id: string, dto: { monthlyRent?: number; bedsAvailable?: number }) {
-    const row = await this.prisma.pgListing.findUnique({ where: { id } });
+  async quickUpdate(user: User, id: string, dto: { sharingOptions?: SharingOptionInput[]; beds?: BedInput[] }) {
+    const row = await this.prisma.pgListing.findUnique({
+      where: { id },
+      include: { sharingOptions: true, beds: true },
+    });
     if (!row) throw new NotFoundException('PG not found');
     if (row.ownerUserId !== user.id) throw new ForbiddenException();
+    if (!dto.beds?.length && !dto.sharingOptions?.length) {
+      throw new BadRequestException('beds or sharingOptions required');
+    }
 
-    const bedsAvailable = dto.bedsAvailable ?? row.bedsAvailable;
+    const inventory = dto.beds?.length
+      ? this.resolveInventory({ beds: dto.beds })
+      : this.resolveInventory({ sharingOptions: dto.sharingOptions });
+
+    await this.prisma.pgBed.deleteMany({ where: { pgListingId: id } });
+    await this.prisma.pgSharingOption.deleteMany({ where: { pgListingId: id } });
     const updated = await this.prisma.pgListing.update({
       where: { id },
       data: {
-        monthlyRent: dto.monthlyRent ?? row.monthlyRent,
-        bedsAvailable,
-        status: this.statusForBeds(bedsAvailable),
+        monthlyRent: inventory.aggregates.monthlyRent,
+        bedsAvailable: inventory.aggregates.bedsAvailable,
+        totalBeds: inventory.aggregates.totalBeds,
+        status: this.statusForBeds(inventory.aggregates.bedsAvailable),
+        beds: { create: inventory.beds },
+        sharingOptions: { create: inventory.tiers },
       },
-      include: { owner: { include: userInclude } },
+      include: pgInclude,
     });
     return toPublicPg(updated);
+  }
+
+  private resolveInventory(dto: {
+    beds?: BedInput[];
+    sharingOptions?: SharingOptionInput[];
+    monthlyRent?: number;
+    bedsAvailable?: number;
+    totalBeds?: number;
+  }) {
+    if (dto.beds?.length) {
+      const beds = this.normalizeBeds(dto.beds);
+      return { beds, tiers: this.tiersFromBeds(beds), aggregates: this.aggregatesFromBeds(beds) };
+    }
+    const tiers = this.normalizeTiers(dto);
+    const beds = this.bedsFromTiers(tiers);
+    return { beds, tiers, aggregates: this.aggregatesFromBeds(beds) };
+  }
+
+  private normalizeBeds(beds: BedInput[]): Array<BedInput & { sortOrder: number }> {
+    const normalized = beds
+      .map((bed, index) => ({
+        roomLabel: bed.roomLabel.trim(),
+        bedLabel: bed.bedLabel.trim().toUpperCase(),
+        sharingType: bed.sharingType,
+        monthlyRent: bed.monthlyRent,
+        status: bed.status,
+        sortOrder: index,
+      }))
+      .filter((bed) => bed.roomLabel && bed.bedLabel);
+    if (!normalized.length) throw new BadRequestException('At least one bed is required');
+    const keys = new Set<string>();
+    for (const bed of normalized) {
+      const key = `${bed.roomLabel}::${bed.bedLabel}`;
+      if (keys.has(key)) throw new BadRequestException(`Duplicate bed: ${bed.roomLabel} · Bed ${bed.bedLabel}`);
+      keys.add(key);
+    }
+    return normalized;
+  }
+
+  private tiersFromBeds(beds: Pick<BedInput, 'sharingType' | 'monthlyRent' | 'status'>[]) {
+    return SHARING_ORDER.map((sharingType) => {
+      const rows = beds.filter((bed) => bed.sharingType === sharingType);
+      if (!rows.length) return null;
+      const available = rows.filter((bed) => bed.status === 'AVAILABLE');
+      const monthlyRent = available.length
+        ? Math.min(...available.map((bed) => bed.monthlyRent))
+        : Math.min(...rows.map((bed) => bed.monthlyRent));
+      return {
+        sharingType,
+        monthlyRent,
+        bedsAvailable: available.length,
+        totalBeds: rows.length,
+      };
+    }).filter((tier): tier is SharingOptionInput => tier !== null);
+  }
+
+  private aggregatesFromBeds(beds: { monthlyRent: number; status: PgBedStatus }[]) {
+    const available = beds.filter((bed) => bed.status === 'AVAILABLE');
+    const monthlyRent = available.length
+      ? Math.min(...available.map((bed) => bed.monthlyRent))
+      : Math.min(...beds.map((bed) => bed.monthlyRent));
+    return {
+      monthlyRent,
+      bedsAvailable: available.length,
+      totalBeds: beds.length,
+    };
+  }
+
+  private bedsFromTiers(tiers: SharingOptionInput[]) {
+    const prefix: Record<PgSharingType, string> = { SINGLE: 'Single', DOUBLE: 'Double', TRIPLE: 'Triple' };
+    const beds: Array<BedInput & { sortOrder: number }> = [];
+    for (const tier of tiers) {
+      if (tier.totalBeds <= 0) continue;
+      const cap = BEDS_PER_ROOM[tier.sharingType];
+      for (let i = 0; i < tier.totalBeds; i++) {
+        const roomIndex = Math.floor(i / cap) + 1;
+        const bedInRoom = i % cap;
+        beds.push({
+          roomLabel: `${prefix[tier.sharingType]} · Room ${roomIndex}`,
+          bedLabel: String.fromCharCode(65 + bedInRoom),
+          sharingType: tier.sharingType,
+          monthlyRent: tier.monthlyRent,
+          status: i < tier.bedsAvailable ? 'AVAILABLE' : 'OCCUPIED',
+          sortOrder: beds.length,
+        });
+      }
+    }
+    return beds;
+  }
+
+  private normalizeTiers(dto: {
+    sharingOptions?: SharingOptionInput[];
+    monthlyRent?: number;
+    bedsAvailable?: number;
+    totalBeds?: number;
+  }) {
+    if (dto.sharingOptions?.length) {
+      const tiers = dto.sharingOptions.filter((tier) => tier.totalBeds > 0);
+      if (!tiers.length) throw new BadRequestException('At least one sharing type is required');
+      return tiers;
+    }
+    if (dto.monthlyRent == null) throw new BadRequestException('beds, sharingOptions, or monthlyRent is required');
+    return [
+      {
+        sharingType: 'SINGLE' as PgSharingType,
+        monthlyRent: dto.monthlyRent,
+        bedsAvailable: dto.bedsAvailable ?? 1,
+        totalBeds: dto.totalBeds ?? 4,
+      },
+    ];
   }
 
   private statusForBeds(bedsAvailable: number) {
@@ -253,7 +417,7 @@ export class PgsService {
     const updated = await this.prisma.pgListing.update({
       where: { id },
       data: { photos: [...row.photos, url] },
-      include: { owner: { include: userInclude } },
+      include: pgInclude,
     });
     return toPublicPg(updated);
   }

@@ -4,9 +4,19 @@ import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Avatar } from '@/components/avatar';
+import {
+  BedInventoryTable,
+  BedQuickToggle,
+  bedInventorySummary,
+  bedsFromListing,
+  bedsToPayload,
+  type BedDraft,
+} from '@/components/pg-bed-inventory';
+import { SharingTiersTable } from '@/components/pg-sharing-tiers';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { inr, prettyEnum } from '@/lib/format';
+import { isPgOperator } from '@/lib/routes';
+import { prettyEnum } from '@/lib/format';
 import { roomPhotoFor } from '@/lib/media';
 import type { InterestState, PgListing } from '@/lib/types';
 
@@ -16,17 +26,18 @@ export default function PgDetailPage() {
   const { user } = useAuth();
   const [pg, setPg] = useState<PgListing | null>(null);
   const [state, setState] = useState<InterestState | null>(null);
-  const [rent, setRent] = useState('');
-  const [beds, setBeds] = useState('');
+  const [beds, setBeds] = useState<BedDraft[]>([]);
   const [saving, setSaving] = useState(false);
   const [quickError, setQuickError] = useState('');
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
-    api<PgListing>(`/pgs/${params.id}`).then((row) => {
-      setPg(row);
-      setRent(String(row.monthlyRent));
-      setBeds(String(row.bedsAvailable));
-    });
+    api<PgListing>(`/pgs/${params.id}`)
+      .then((row) => {
+        setPg(row);
+        setBeds(bedsFromListing(row.beds));
+      })
+      .catch((err) => setLoadError(err instanceof Error ? err.message : 'Could not load PG'));
   }, [params.id]);
 
   useEffect(() => {
@@ -42,14 +53,10 @@ export default function PgDetailPage() {
     try {
       const updated = await api<PgListing>(`/pgs/${pg.id}/quick`, {
         method: 'PATCH',
-        body: JSON.stringify({
-          monthlyRent: Number(rent),
-          bedsAvailable: Number(beds),
-        }),
+        body: JSON.stringify({ beds: bedsToPayload(beds) }),
       });
       setPg(updated);
-      setRent(String(updated.monthlyRent));
-      setBeds(String(updated.bedsAvailable));
+      setBeds(bedsFromListing(updated.beds));
     } catch (err) {
       setQuickError(err instanceof Error ? err.message : 'Could not update listing');
     } finally {
@@ -67,24 +74,46 @@ export default function PgDetailPage() {
     if (next.conversationId) router.push(`/chat/${next.conversationId}`);
   }
 
-  if (!pg) return <p className="px-5 py-16 text-center text-muted">Loading…</p>;
+  if (!pg) return <p className="px-5 py-16 text-center text-muted">{loadError || 'Loading…'}</p>;
 
   const mine = user?.id === pg.owner.id;
   const hidden = pg.status === 'CLOSED' || pg.bedsAvailable <= 0;
+  const backHref = mine && isPgOperator(user) ? '/operator' : '/pgs';
+  const backLabel = mine && isPgOperator(user) ? 'Operator dashboard' : 'PG marketplace';
+  const hasBedInventory = (pg.beds?.length ?? 0) > 0;
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-5 sm:py-10">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={roomPhotoFor(pg.locality, pg.photos)} alt={pg.title} className="h-56 w-full rounded-[1.5rem] object-cover sm:h-72" />
-      <p className="mt-4 text-sm text-muted"><Link href="/pgs" className="text-clay">PG marketplace</Link></p>
+      <p className="mt-4 text-sm text-muted"><Link href={backHref} className="text-clay">{backLabel}</Link></p>
       <h1 className="mt-1 text-3xl font-semibold">{pg.title}</h1>
-      <p className="mt-2 text-2xl font-semibold">{inr(pg.monthlyRent)} <span className="text-base font-medium text-muted">/ bed</span></p>
-      <p className="mt-2 text-sm text-muted">
-        {pg.locality} · {prettyEnum(pg.genderPolicy)} · {pg.bedsAvailable} beds open · {pg.mealsIncluded ? 'Meals included' : 'No meals'}
+      <p className="mt-2 text-2xl font-semibold">
+        {bedInventorySummary(pg.beds, pg.sharingOptions, pg.monthlyRent)}
       </p>
+      <p className="mt-2 text-sm text-muted">
+        {pg.locality} · {prettyEnum(pg.genderPolicy)} · {pg.bedsAvailable} beds open total · {pg.mealsIncluded ? 'Meals included' : 'No meals'}
+      </p>
+
+      <div className="mt-6">
+        <h2 className="text-sm font-semibold">{hasBedInventory ? 'Bed inventory' : 'Availability by sharing type'}</h2>
+        <div className="mt-3">
+          {hasBedInventory ? (
+            <BedInventoryTable beds={pg.beds} ownerView={mine} />
+          ) : (
+            <SharingTiersTable
+              options={pg.sharingOptions}
+              monthlyRent={pg.monthlyRent}
+              bedsAvailable={pg.bedsAvailable}
+              totalBeds={pg.totalBeds}
+            />
+          )}
+        </div>
+      </div>
+
       {hidden && (
         <p className="mt-3 rounded-xl bg-[#FFF1F5] px-4 py-3 text-sm text-ink/80">
-          {mine ? 'This listing is hidden from search — no beds available. Add beds to publish again.' : 'No beds available right now.'}
+          {mine ? 'Hidden from seekers — all beds are full. Mark beds open to publish again.' : 'No beds available right now.'}
         </p>
       )}
       <p className="mt-4 text-sm text-ink/70">
@@ -100,55 +129,34 @@ export default function PgDetailPage() {
       {mine && (
         <form onSubmit={quickSave} className="panel mt-8 space-y-4 p-5">
           <div>
-            <h2 className="font-semibold">Quick update</h2>
-            <p className="mt-1 text-sm text-muted">Change rent or open beds without opening the full edit form.</p>
+            <h2 className="font-semibold">Quick update beds</h2>
+            <p className="mt-1 text-sm text-muted">Toggle beds open or occupied. For rent or room changes, use full edit.</p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block text-sm">
-              <span className="text-muted">Rent per bed (₹)</span>
-              <input
-                type="number"
-                required
-                min={1000}
-                value={rent}
-                onChange={(e) => setRent(e.target.value)}
-                className="field mt-1"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="text-muted">Beds open</span>
-              <input
-                type="number"
-                required
-                min={0}
-                value={beds}
-                onChange={(e) => setBeds(e.target.value)}
-                className="field mt-1"
-              />
-            </label>
-          </div>
+          <BedQuickToggle beds={beds} onChange={setBeds} />
           {quickError && <p className="text-sm text-clay">{quickError}</p>}
           <div className="flex flex-wrap gap-3">
             <button type="submit" disabled={saving} className="btn-primary">
-              {saving ? 'Saving…' : 'Save availability'}
+              {saving ? 'Saving…' : 'Save changes'}
             </button>
             <Link href={`/pgs/${pg.id}/edit`} className="btn-ghost">Full edit</Link>
           </div>
         </form>
       )}
 
-      <div className="panel mt-8 flex items-center gap-4 p-5">
-        <Avatar name={pg.owner.name} photoUrl={pg.owner.photoUrl} size={56} />
-        <div>
-          <p className="text-sm text-muted">Listed by</p>
-          <p className="text-lg font-semibold">{pg.owner.name}</p>
-          <Link href={`/people/${pg.owner.id}`} className="text-sm text-clay">View profile</Link>
+      {!mine && (
+        <div className="panel mt-8 flex items-center gap-4 p-5">
+          <Avatar name={pg.owner.name} photoUrl={pg.owner.photoUrl} size={56} />
+          <div>
+            <p className="text-sm text-muted">Listed by</p>
+            <p className="text-lg font-semibold">{pg.owner.name}</p>
+            <Link href={`/people/${pg.owner.id}`} className="text-sm text-clay">View profile</Link>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="mt-8 flex flex-wrap gap-3">
         {mine ? (
-          !hidden && <Link href={`/pgs/${pg.id}/edit`} className="btn-dark">Edit listing</Link>
+          <Link href={`/pgs/${pg.id}/edit`} className="btn-dark">Edit listing</Link>
         ) : (
           <>
             <button type="button" onClick={messageOperator} className="btn-primary" disabled={hidden}>

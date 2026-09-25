@@ -7,13 +7,14 @@ import { Bookmark, Building2, Compass, Heart, Home, Menu, MessageCircle, Plus, X
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useInbox } from '@/lib/inbox';
+import { homeForUser, isPgOperator } from '@/lib/routes';
 import { Avatar } from './avatar';
 import { LocationPicker } from './location-picker';
 import { Logo } from './logo';
 
 const livingPaths = ['/living', '/pgs', '/groups', '/replacements', '/agreements'];
 
-const appLinks = [
+const seekerLinks = [
   { href: '/discover', label: 'Discover', icon: Compass },
   { href: '/matches', label: 'Matches', icon: Heart },
   { href: '/chat', label: 'Messages', icon: MessageCircle },
@@ -21,8 +22,17 @@ const appLinks = [
   { href: '/living', label: 'Living', icon: Building2, match: livingPaths },
 ];
 
-function linkActive(pathname: string, link: (typeof appLinks)[number]) {
+const operatorLinks = [
+  { href: '/operator', label: 'Dashboard', icon: Building2 },
+  { href: '/chat', label: 'Messages', icon: MessageCircle },
+];
+
+type NavLink = (typeof seekerLinks)[number];
+
+function linkActive(pathname: string, link: NavLink) {
   if (link.match) return link.match.some((path) => pathname.startsWith(path));
+  if (link.href === '/operator') return pathname.startsWith('/operator');
+  if (link.href === '/pgs') return pathname.startsWith('/pgs');
   return pathname.startsWith(link.href);
 }
 
@@ -34,7 +44,9 @@ export function AppHeader() {
   const [incoming, setIncoming] = useState(0);
   const [listingId, setListingId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const isOperator = user?.role === 'PG_OWNER' || user?.role === 'ADMIN';
+  const pgOperator = isPgOperator(user);
+  const isOperator = pgOperator || user?.role === 'ADMIN';
+  const navLinks = pgOperator ? operatorLinks : seekerLinks;
 
   useEffect(() => {
     if (!user) return;
@@ -57,11 +69,11 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-20 border-b border-sand/80 bg-white/85 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-3 sm:gap-4 sm:px-5">
-        <Logo href={user ? '/discover' : '/'} />
-        <LocationPicker />
+        <Logo href={user ? homeForUser(user) : '/'} />
+        {!pgOperator && <LocationPicker />}
 
         <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
-          {appLinks.map((link) => {
+          {navLinks.map((link) => {
             const active = linkActive(pathname, link);
             return (
               <Link
@@ -78,6 +90,11 @@ export function AppHeader() {
                     {incoming}
                   </span>
                 )}
+                {link.href === '/operator' && incoming > 0 && (
+                  <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-clay px-1 text-[10px] text-white">
+                    {incoming}
+                  </span>
+                )}
                 {link.href === '/chat' && unreadCount > 0 && (
                   <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-clay px-1 text-[10px] text-white">
                     {unreadCount}
@@ -90,15 +107,17 @@ export function AppHeader() {
 
         {user ? (
           <div className="flex items-center gap-2">
-            <Link
-              href="/saved"
-              aria-label="Saved"
-              className={`grid h-10 w-10 place-items-center rounded-full ${
-                pathname.startsWith('/saved') ? 'bg-[#FFE8F0] text-clay' : 'text-muted hover:bg-[#FFF1F5] hover:text-ink'
-              }`}
-            >
-              <Bookmark className="h-4 w-4" />
-            </Link>
+            {!pgOperator && (
+              <Link
+                href="/saved"
+                aria-label="Saved"
+                className={`grid h-10 w-10 place-items-center rounded-full ${
+                  pathname.startsWith('/saved') ? 'bg-[#FFE8F0] text-clay' : 'text-muted hover:bg-[#FFF1F5] hover:text-ink'
+                }`}
+              >
+                <Bookmark className="h-4 w-4" />
+              </Link>
+            )}
             {isOperator ? (
               <Link href="/operator" className="btn-primary hidden h-10 px-4 sm:inline-flex">
                 <Building2 className="mr-1 h-4 w-4" />
@@ -128,12 +147,16 @@ export function AppHeader() {
                   <Link href="/profile" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-2 text-sm hover:bg-[#FFF1F5]">
                     View profile
                   </Link>
-                  <Link href="/saved" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-2 text-sm hover:bg-[#FFF1F5]">
-                    Saved
-                  </Link>
-                  <Link href="/living" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-2 text-sm hover:bg-[#FFF1F5]">
-                    Living
-                  </Link>
+                  {!pgOperator && (
+                    <>
+                      <Link href="/saved" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-2 text-sm hover:bg-[#FFF1F5]">
+                        Saved
+                      </Link>
+                      <Link href="/living" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-2 text-sm hover:bg-[#FFF1F5]">
+                        Living
+                      </Link>
+                    </>
+                  )}
                   {isOperator && (
                     <Link href="/operator" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-2 text-sm hover:bg-[#FFF1F5]">
                       Operator dashboard
@@ -169,7 +192,7 @@ export function AppHeader() {
 
       {user && (
         <nav className="flex items-center justify-around border-t border-sand/70 px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden">
-          {appLinks.map((link) => {
+          {navLinks.map((link) => {
             const active = linkActive(pathname, link);
             return (
               <Link
@@ -179,7 +202,7 @@ export function AppHeader() {
               >
                 <link.icon className="h-4 w-4" />
                 {link.label}
-                {link.href === '/matches' && incoming > 0 && (
+                {(link.href === '/matches' || link.href === '/operator') && incoming > 0 && (
                   <span className="absolute right-1 top-0 h-1.5 w-1.5 rounded-full bg-clay" />
                 )}
                 {link.href === '/chat' && unreadCount > 0 && (

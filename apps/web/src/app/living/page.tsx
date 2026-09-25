@@ -71,7 +71,12 @@ export default function LivingPage() {
         </Link>
       )}
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
-        {(user.role === 'PG_OWNER' || user.role === 'ADMIN' ? [operatorTile, ...tiles] : tiles).map((tile) => (
+        {(user.role === 'PG_OWNER'
+          ? [operatorTile]
+          : user.role === 'ADMIN'
+            ? [operatorTile, ...tiles]
+            : tiles
+        ).map((tile) => (
           <Link key={tile.href} href={tile.href} className="panel p-5 hover:border-clay/40">
             <tile.icon className="h-5 w-5 text-clay" />
             <h2 className="mt-3 text-lg font-semibold">{tile.title}</h2>
