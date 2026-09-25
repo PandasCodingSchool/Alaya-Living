@@ -1,13 +1,19 @@
 import {
   AlcoholPreference,
+  FlatGroupStatus,
   FoodPreference,
   Gender,
+  GroupMemberRole,
+  GroupMemberStatus,
+  PgGenderPolicy,
   PrismaClient,
   PropertyType,
+  ReplacementStatus,
   RoomType,
   SharingPermission,
   SmokingPreference,
   UserIntent,
+  UserRole,
   WorkMode,
 } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
@@ -702,6 +708,7 @@ async function main() {
         email: person.email,
         phone: person.phone,
         passwordHash,
+        role: person.email === 'admin@fmr.test' ? UserRole.ADMIN : UserRole.USER,
         emailVerified: true,
         phoneVerified: person.phoneVerified ?? true,
         profile: {
@@ -834,12 +841,164 @@ async function main() {
   await like('sneha', 'priya');
   await like('divya', 'ananya');
 
+  const arjunPankajMatch = await prisma.match.findFirst({
+    where: {
+      OR: [
+        { userAId: created.arjun.id, userBId: created.pankaj.id },
+        { userAId: created.pankaj.id, userBId: created.arjun.id },
+      ],
+    },
+  });
+  const pankajRoom = await prisma.room.findFirst({
+    where: { accommodation: { ownerUserId: created.pankaj.id } },
+    select: { id: true },
+  });
+
+  await prisma.user.upsert({
+    where: { email: 'admin@fmr.test' },
+    update: { role: UserRole.ADMIN },
+    create: {
+      email: 'admin@fmr.test',
+      phone: '9876509999',
+      passwordHash,
+      role: UserRole.ADMIN,
+      emailVerified: true,
+      phoneVerified: true,
+      profile: {
+        create: {
+          firstName: 'Admin',
+          city: 'Bengaluru',
+          intent: UserIntent.OTHER,
+          onboardingDone: true,
+        },
+      },
+      preferences: {
+        create: {
+          minBudget: 0,
+          maxBudget: 0,
+          localities: ['Bellandur'],
+        },
+      },
+    },
+  });
+
+  await prisma.pgListing.createMany({
+    data: [
+      {
+        ownerUserId: created.pankaj.id,
+        title: 'Green Nest PG — Bellandur',
+        locality: 'Bellandur',
+        monthlyRent: 10500,
+        deposit: 15000,
+        genderPolicy: PgGenderPolicy.MALE,
+        mealsIncluded: true,
+        sharingPermission: SharingPermission.REQUIRES_APPROVAL,
+        bedsAvailable: 2,
+        totalBeds: 8,
+        amenities: ['WiFi', 'Food', 'AC', 'Housekeeping'],
+        notes: 'Managed PG on ORR. Warden approval needed for sharing.',
+        availableFrom: new Date('2026-10-01'),
+      },
+      {
+        ownerUserId: created.priya.id,
+        title: 'Sunrise Ladies PG — Whitefield',
+        locality: 'Whitefield',
+        monthlyRent: 9800,
+        deposit: 12000,
+        genderPolicy: PgGenderPolicy.FEMALE,
+        mealsIncluded: true,
+        sharingPermission: SharingPermission.YES,
+        bedsAvailable: 1,
+        totalBeds: 6,
+        amenities: ['WiFi', 'Food', 'Laundry'],
+        notes: 'Near ITPL. Quiet hours after 10 PM.',
+        availableFrom: new Date('2026-10-10'),
+      },
+      {
+        ownerUserId: created.rahul.id,
+        title: 'HSR Co-living Beds',
+        locality: 'HSR',
+        monthlyRent: 12000,
+        deposit: 18000,
+        genderPolicy: PgGenderPolicy.ANY,
+        mealsIncluded: false,
+        sharingPermission: SharingPermission.YES,
+        bedsAvailable: 3,
+        totalBeds: 12,
+        amenities: ['WiFi', 'Kitchen', 'Laundry'],
+        notes: 'Co-living with shared kitchen. Good for small groups.',
+        availableFrom: new Date('2026-10-15'),
+      },
+    ],
+  });
+
+  await prisma.user.updateMany({
+    where: { id: { in: [created.pankaj.id, created.priya.id, created.rahul.id] } },
+    data: { role: UserRole.PG_OWNER },
+  });
+
+  const flatGroup = await prisma.flatGroup.create({
+    data: {
+      createdById: created.arjun.id,
+      title: 'Ecoworld flatmates — 3BHK hunt',
+      targetSize: 3,
+      targetRentEach: 11000,
+      localities: ['Bellandur', 'Kadubeesanahalli', 'Marathahalli'],
+      moveInDate: new Date('2026-10-01'),
+      notes: 'Office at RMZ Ecoworld. Prefer vegetarian kitchen.',
+      status: FlatGroupStatus.FORMING,
+      members: {
+        create: [
+          { userId: created.arjun.id, role: GroupMemberRole.OWNER, status: GroupMemberStatus.JOINED },
+          { userId: created.vivek.id, role: GroupMemberRole.MEMBER, status: GroupMemberStatus.INVITED },
+        ],
+      },
+    },
+  });
+
+  if (pankajRoom) {
+    await prisma.replacement.create({
+      data: {
+        roomId: pankajRoom.id,
+        createdById: created.pankaj.id,
+        departingName: 'Former flatmate',
+        leaveDate: new Date('2026-11-01'),
+        notes: 'PG allows one replacement with warden approval. Same rent split.',
+        status: ReplacementStatus.OPEN,
+      },
+    });
+  }
+
+  if (arjunPankajMatch) {
+    await prisma.agreement.create({
+      data: {
+        matchId: arjunPankajMatch.id,
+        roomId: pankajRoom?.id,
+        createdById: created.pankaj.id,
+        counterpartyId: created.arjun.id,
+        rentEach: 10000,
+        electricity: '50/50',
+        internet: 'Included in PG rent',
+        cleaning: 'PG housekeeping',
+        groceries: 'Separate',
+        guests: 'Notify beforehand',
+        quietHours: '11 PM–7 AM',
+        notes: 'Draft terms from Pankaj — Arjun still needs to confirm.',
+        creatorConfirmed: true,
+        otherConfirmed: false,
+      },
+    });
+  }
+
   console.log('Seeded Alaya demo accounts (password Password123!)');
+  console.log(`Living: PG listings, flat group ${flatGroup.id}, replacement + agreement demos`);
   console.log('Men / ORR: arjun, pankaj, vivek, rohan, karan, dev, aditya');
   console.log('Men / farther: rahul (HSR), nikhil (Whitefield), sameer (EC)');
   console.log('Women / Whitefield: priya, meera, sneha, kavya');
   console.log('Women / farther: ananya (HSR), divya (HSR), isha (EC)');
   console.log('Demo: sign in as arjun@fmr.test — same-gender, Ecoworld-first ranking, existing chat with Pankaj.');
+  console.log('PG operators: pankaj@fmr.test, priya@fmr.test, rahul@fmr.test → /operator dashboard');
+  console.log('Admin: admin@fmr.test → /operator dashboard (admin tools later)');
 }
 
 main()

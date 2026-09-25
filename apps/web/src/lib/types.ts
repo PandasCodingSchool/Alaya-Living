@@ -47,6 +47,7 @@ export interface Profile {
   distanceKm?: number | null;
   distanceLabel?: string | null;
   onboardingDone?: boolean;
+  role?: 'USER' | 'PG_OWNER' | 'ADMIN';
   email?: string | null;
   phone?: string | null;
   compatibility?: Compatibility;
@@ -92,6 +93,93 @@ export interface Membership {
   matchCount: number;
   freeLimit: number;
   freeRemaining: number;
+}
+
+export interface Agreement {
+  id: string;
+  matchId: string;
+  roomId: string | null;
+  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED';
+  rentEach: number;
+  electricity: string;
+  internet: string;
+  cleaning: string;
+  groceries: string;
+  guests: string;
+  quietHours: string;
+  notes: string | null;
+  creatorConfirmed: boolean;
+  otherConfirmed: boolean;
+  confirmedAt: string | null;
+  createdAt: string;
+  mine: boolean;
+  waitingOnMe: boolean;
+  other: Profile;
+}
+
+export interface ReplacementPost {
+  id: string;
+  roomId: string;
+  departingName: string;
+  leaveDate: string;
+  notes: string | null;
+  status: 'OPEN' | 'FILLED' | 'CLOSED';
+  createdAt: string;
+  mine: boolean;
+  room: Room;
+  createdBy: Profile;
+  candidates?: Profile[];
+}
+
+export interface FlatGroup {
+  id: string;
+  title: string;
+  targetSize: number;
+  targetRentEach: number;
+  combinedBudget: number;
+  localities: string[];
+  moveInDate: string | null;
+  notes: string | null;
+  status: 'FORMING' | 'COMPLETE' | 'SEARCHING' | 'CLOSED';
+  createdAt: string;
+  isOwner: boolean;
+  myStatus: 'INVITED' | 'JOINED' | 'LEFT' | null;
+  members: { role: string; status: string; user: Profile }[];
+  suggestedPeople?: Profile[];
+  suggestedPgs?: PgListing[];
+}
+
+export interface PgOperatorDashboard {
+  summary: {
+    listings: number;
+    activeListings: number;
+    totalBeds: number;
+    openBeds: number;
+    inquiries: number;
+  };
+  listings: PgListing[];
+  inquiries: { id: string; createdAt: string; user: Profile }[];
+}
+
+export interface PgListing {
+  id: string;
+  title: string;
+  locality: string;
+  city: string;
+  propertyType: string;
+  monthlyRent: number;
+  deposit: number | null;
+  genderPolicy: string;
+  mealsIncluded: boolean;
+  sharingPermission: string;
+  bedsAvailable: number;
+  totalBeds: number;
+  photos: string[];
+  amenities: string[];
+  notes?: string | null;
+  availableFrom: string;
+  status?: string;
+  owner: Profile;
 }
 
 export interface ContactAccess {

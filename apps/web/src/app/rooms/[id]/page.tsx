@@ -35,6 +35,7 @@ export default function RoomPage() {
   const mine = user?.id === room.owner.id;
 
   async function interest() {
+    if (!room) return;
     const next = await api<InterestState>('/interests', {
       method: 'POST',
       body: JSON.stringify({ toUserId: room.owner.id, roomId: room.id }),
@@ -82,7 +83,10 @@ export default function RoomPage() {
       {!mine && <ContactReveal userId={room.owner.id} matched={!!state?.matched} />}
       <div className="mt-8 flex flex-wrap gap-3">
         {mine ? (
-          <Link href={`/rooms/${room.id}/edit`} className="btn-dark">Edit listing</Link>
+          <>
+            <Link href={`/rooms/${room.id}/edit`} className="btn-dark">Edit listing</Link>
+            <Link href={`/replacements/new?roomId=${room.id}`} className="btn-ghost">Find replacement</Link>
+          </>
         ) : (
           <button onClick={interest} className="btn-primary">
             {state?.matched ? 'Open chat' : state?.interested ? 'Interest sent' : 'Interested'}

@@ -63,6 +63,7 @@ export function toPublicProfile(user: FullUser) {
     preferredGenders: user.preferences?.preferredGenders ?? [],
     preferredRadiusKm: user.preferences?.preferredRadiusKm ?? 5,
     onboardingDone: user.profile?.onboardingDone ?? false,
+    role: user.role,
   };
 }
 

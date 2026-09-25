@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { User } from '@prisma/client';
+import { User, UserIntent, UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { UpdatePreferencesDto, UpdateProfileDto } from './dto';
@@ -27,7 +27,23 @@ export class UsersService {
       update: dto,
       create: { userId: user.id, firstName: dto.firstName || 'Member', ...dto },
     });
+    if (dto.intent === UserIntent.LIST_PG && user.role === UserRole.USER) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { role: UserRole.PG_OWNER },
+      });
+    }
     return this.me(user);
+  }
+
+  async ensurePgOwner(userId: string) {
+    const row = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (row?.role === UserRole.USER) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { role: UserRole.PG_OWNER },
+      });
+    }
   }
 
   async updatePreferences(user: User, dto: UpdatePreferencesDto) {

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { Bookmark, Compass, Heart, Home, Menu, MessageCircle, Plus, X } from 'lucide-react';
+import { Bookmark, Building2, Compass, Heart, Home, Menu, MessageCircle, Plus, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useInbox } from '@/lib/inbox';
@@ -11,12 +11,20 @@ import { Avatar } from './avatar';
 import { LocationPicker } from './location-picker';
 import { Logo } from './logo';
 
+const livingPaths = ['/living', '/pgs', '/groups', '/replacements', '/agreements'];
+
 const appLinks = [
   { href: '/discover', label: 'Discover', icon: Compass },
   { href: '/matches', label: 'Matches', icon: Heart },
   { href: '/chat', label: 'Messages', icon: MessageCircle },
   { href: '/listings', label: 'Rooms', icon: Home },
+  { href: '/living', label: 'Living', icon: Building2, match: livingPaths },
 ];
+
+function linkActive(pathname: string, link: (typeof appLinks)[number]) {
+  if (link.match) return link.match.some((path) => pathname.startsWith(path));
+  return pathname.startsWith(link.href);
+}
 
 export function AppHeader() {
   const pathname = usePathname();
@@ -26,6 +34,7 @@ export function AppHeader() {
   const [incoming, setIncoming] = useState(0);
   const [listingId, setListingId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const isOperator = user?.role === 'PG_OWNER' || user?.role === 'ADMIN';
 
   useEffect(() => {
     if (!user) return;
@@ -53,7 +62,7 @@ export function AppHeader() {
 
         <nav className="hidden flex-1 items-center justify-center gap-1 md:flex">
           {appLinks.map((link) => {
-            const active = pathname.startsWith(link.href);
+            const active = linkActive(pathname, link);
             return (
               <Link
                 key={link.href}
@@ -90,10 +99,17 @@ export function AppHeader() {
             >
               <Bookmark className="h-4 w-4" />
             </Link>
-            <Link href={listingId ? `/rooms/${listingId}/edit` : '/rooms/new'} className="btn-primary hidden h-10 px-4 sm:inline-flex">
-              <Plus className="mr-1 h-4 w-4" />
-              {listingId ? 'Edit listing' : 'List a room'}
-            </Link>
+            {isOperator ? (
+              <Link href="/operator" className="btn-primary hidden h-10 px-4 sm:inline-flex">
+                <Building2 className="mr-1 h-4 w-4" />
+                Dashboard
+              </Link>
+            ) : (
+              <Link href={listingId ? `/rooms/${listingId}/edit` : '/rooms/new'} className="btn-primary hidden h-10 px-4 sm:inline-flex">
+                <Plus className="mr-1 h-4 w-4" />
+                {listingId ? 'Edit listing' : 'List a room'}
+              </Link>
+            )}
             <div className="relative" ref={menuRef}>
               <button
                 type="button"
@@ -115,12 +131,20 @@ export function AppHeader() {
                   <Link href="/saved" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-2 text-sm hover:bg-[#FFF1F5]">
                     Saved
                   </Link>
+                  <Link href="/living" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-2 text-sm hover:bg-[#FFF1F5]">
+                    Living
+                  </Link>
+                  {isOperator && (
+                    <Link href="/operator" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-2 text-sm hover:bg-[#FFF1F5]">
+                      Operator dashboard
+                    </Link>
+                  )}
                   <Link
-                    href={listingId ? `/rooms/${listingId}/edit` : '/rooms/new'}
+                    href={isOperator ? '/operator' : listingId ? `/rooms/${listingId}/edit` : '/rooms/new'}
                     onClick={() => setOpen(false)}
                     className="block rounded-xl px-3 py-2 text-sm hover:bg-[#FFF1F5] sm:hidden"
                   >
-                    {listingId ? 'Edit listing' : 'List a room'}
+                    {isOperator ? 'Operator dashboard' : listingId ? 'Edit listing' : 'List a room'}
                   </Link>
                   <button
                     onClick={() => {
@@ -146,7 +170,7 @@ export function AppHeader() {
       {user && (
         <nav className="flex items-center justify-around border-t border-sand/70 px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden">
           {appLinks.map((link) => {
-            const active = pathname.startsWith(link.href);
+            const active = linkActive(pathname, link);
             return (
               <Link
                 key={link.href}

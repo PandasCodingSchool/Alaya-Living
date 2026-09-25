@@ -9,6 +9,7 @@ datasource db {
 
 enum UserRole {
   USER
+  PG_OWNER
   ADMIN
 }
 
@@ -21,6 +22,7 @@ enum UserIntent {
   HAVE_ROOM
   NEED_ROOM
   FIND_FLATMATES
+  LIST_PG
   OTHER
 }
 
@@ -124,7 +126,13 @@ model User {
   messages        Message[]
   blocksFrom      Block[]        @relation("BlockFrom")
   blocksTo        Block[]        @relation("BlockTo")
-  bookmarks       Bookmark[]
+  bookmarks              Bookmark[]
+  agreementsCreated      Agreement[]         @relation("AgreementCreator")
+  agreementsReceived     Agreement[]         @relation("AgreementOther")
+  replacements           Replacement[]
+  flatGroupsCreated      FlatGroup[]
+  flatGroupMemberships   FlatGroupMember[]
+  pgListings             PgListing[]
 }
 
 model Profile {
@@ -199,6 +207,42 @@ model Accommodation {
   rooms              Room[]
 }
 
+enum AgreementStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum ReplacementStatus {
+  OPEN
+  FILLED
+  CLOSED
+}
+
+enum FlatGroupStatus {
+  FORMING
+  COMPLETE
+  SEARCHING
+  CLOSED
+}
+
+enum GroupMemberRole {
+  OWNER
+  MEMBER
+}
+
+enum GroupMemberStatus {
+  INVITED
+  JOINED
+  LEFT
+}
+
+enum PgGenderPolicy {
+  MALE
+  FEMALE
+  ANY
+}
+
 model Room {
   id               String        @id @default(cuid())
   accommodationId  String
@@ -211,6 +255,7 @@ model Room {
   photos           String[]
   notes            String?
   amenities        RoomAmenity[]
+  replacements     Replacement[]
 }
 
 model RoomAmenity {
@@ -246,6 +291,7 @@ model Match {
   userB           User          @relation("MatchB", fields: [userBId], references: [id], onDelete: Cascade)
   reasons         MatchReason[]
   conversation    Conversation?
+  agreement       Agreement?
 
   @@unique([userAId, userBId])
 }
@@ -291,6 +337,100 @@ model Bookmark {
   createdAt DateTime     @default(now())
 
   @@unique([userId, kind, targetId])
+}
+
+model Agreement {
+  id               String           @id @default(cuid())
+  matchId          String           @unique
+  match            Match            @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  roomId           String?
+  createdById      String
+  createdBy        User             @relation("AgreementCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  counterpartyId   String
+  counterparty     User             @relation("AgreementOther", fields: [counterpartyId], references: [id], onDelete: Cascade)
+  status           AgreementStatus  @default(PENDING)
+  rentEach         Int
+  electricity      String           @default("50/50")
+  internet         String           @default("50/50")
+  cleaning         String           @default("Alternate weekly")
+  groceries        String           @default("Separate")
+  guests           String           @default("Notify beforehand")
+  quietHours       String           @default("11 PM–7 AM")
+  notes            String?
+  creatorConfirmed Boolean          @default(true)
+  otherConfirmed   Boolean          @default(false)
+  confirmedAt      DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+model Replacement {
+  id             String             @id @default(cuid())
+  roomId         String
+  room           Room               @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  createdById    String
+  createdBy      User               @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  departingName  String
+  leaveDate      DateTime
+  notes          String?
+  status         ReplacementStatus  @default(OPEN)
+  createdAt      DateTime           @default(now())
+}
+
+model FlatGroup {
+  id             String          @id @default(cuid())
+  createdById    String
+  createdBy      User            @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  title          String
+  targetSize     Int
+  targetRentEach Int
+  localities     String[]
+  moveInDate     DateTime?
+  notes          String?
+  status         FlatGroupStatus @default(FORMING)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  members        FlatGroupMember[]
+}
+
+model FlatGroupMember {
+  id      String             @id @default(cuid())
+  groupId String
+  group   FlatGroup          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role    GroupMemberRole    @default(MEMBER)
+  status  GroupMemberStatus  @default(INVITED)
+  createdAt DateTime         @default(now())
+
+  @@unique([groupId, userId])
+}
+
+model PgListing {
+  id                String           @id @default(cuid())
+  ownerUserId       String
+  owner             User             @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  title             String
+  locality          String
+  city              String           @default("Bengaluru")
+  propertyType      PropertyType     @default(PG)
+  monthlyRent       Int
+  deposit           Int?
+  genderPolicy      PgGenderPolicy   @default(ANY)
+  mealsIncluded     Boolean          @default(false)
+  sharingPermission SharingPermission @default(YES)
+  bedsAvailable     Int              @default(1)
+  totalBeds         Int              @default(4)
+  photos            String[]
+  amenities         String[]
+  notes             String?
+  availableFrom     DateTime
+  exactAddress      String?
+  latitude          Float?
+  longitude         Float?
+  status            RoomStatus       @default(ACTIVE)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 }
 
 model Block {

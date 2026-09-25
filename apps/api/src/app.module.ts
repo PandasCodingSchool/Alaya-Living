@@ -1,7 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { AgreementsModule } from './agreements/agreements.module';
 import { AuthModule } from './auth/auth.module';
 import { BookmarksModule } from './bookmarks/bookmarks.module';
+import { GroupsModule } from './groups/groups.module';
+import { PgsModule } from './pgs/pgs.module';
+import { ReplacementsModule } from './replacements/replacements.module';
 import { ChatModule } from './chat/chat.module';
 import { InterestsModule } from './interests/interests.module';
 import { MatchingModule } from './matching/matching.module';
@@ -26,6 +30,10 @@ import { UsersModule } from './users/users.module';
     MatchingModule,
     InterestsModule,
     BookmarksModule,
+    AgreementsModule,
+    ReplacementsModule,
+    GroupsModule,
+    PgsModule,
     MembershipModule,
     ChatModule,
     SafetyModule,

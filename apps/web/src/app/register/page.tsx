@@ -1,16 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { FormEvent, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { FormEvent, Suspense, useState } from 'react';
+import { Building2 } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { api, setToken } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { refresh } = useAuth();
   const [error, setError] = useState('');
+  const pgOwner = searchParams.get('as') === 'pg-owner';
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -26,7 +29,7 @@ export default function RegisterPage() {
       });
       setToken(res.accessToken);
       await refresh();
-      router.push('/onboarding');
+      router.push(pgOwner ? '/onboarding?intent=LIST_PG' : '/onboarding');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not register');
     }
@@ -57,19 +60,51 @@ export default function RegisterPage() {
         <div className="lg:hidden">
           <Logo href="/" />
         </div>
-        <h1 className="mt-8 text-3xl font-semibold">Join Alaya</h1>
-        <p className="mt-2 text-sm text-muted">Takes a few minutes. You can list a room after onboarding.</p>
+        <h1 className="mt-8 text-3xl font-semibold">{pgOwner ? 'Register as PG operator' : 'Join Alaya'}</h1>
+        <p className="mt-2 text-sm text-muted">
+          {pgOwner
+            ? 'Create your account, then list beds, set pricing, and manage inquiries from your dashboard.'
+            : 'Takes a few minutes. You can list a room or PG beds after onboarding.'}
+        </p>
+        {!pgOwner && (
+          <Link
+            href="/register?as=pg-owner"
+            className="mt-4 flex items-center gap-3 rounded-2xl border border-sand bg-[#FFF1F5] px-4 py-3 text-sm hover:border-clay/40"
+          >
+            <Building2 className="h-5 w-5 text-clay" />
+            <span>
+              <span className="font-semibold text-ink">I list PG beds</span>
+              <span className="mt-0.5 block text-muted">Separate operator signup → dashboard after onboarding</span>
+            </span>
+          </Link>
+        )}
         <form onSubmit={onSubmit} className="mt-8 space-y-3">
           <input name="firstName" required placeholder="First name" className="field" />
           <input name="email" type="email" required placeholder="Work or personal email" className="field" />
           <input name="password" type="password" minLength={8} required placeholder="Password (8+ characters)" className="field" />
-          <button className="btn-primary w-full">Continue to onboarding</button>
+          <button className="btn-primary w-full">
+            {pgOwner ? 'Continue — set up PG operator profile' : 'Continue to onboarding'}
+          </button>
         </form>
         {error && <p className="mt-4 text-sm text-orange-700">{error}</p>}
         <p className="mt-6 text-sm text-muted">
-          Already have an account? <Link href="/login" className="text-clay">Sign in</Link>
+          Already have an account?{' '}
+          <Link href={pgOwner ? '/login?as=pg-owner' : '/login'} className="text-clay">Sign in</Link>
         </p>
+        {pgOwner && (
+          <p className="mt-3 text-sm text-muted">
+            Looking for a room instead? <Link href="/register" className="text-clay">Join as a seeker</Link>
+          </p>
+        )}
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<p className="px-5 py-16 text-center text-muted">Loading…</p>}>
+      <RegisterForm />
+    </Suspense>
   );
 }

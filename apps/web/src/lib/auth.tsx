@@ -7,14 +7,14 @@ import type { Profile } from './types';
 interface AuthContextValue {
   user: Profile | null;
   loading: boolean;
-  refresh: () => Promise<void>;
+  refresh: () => Promise<Profile | null>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue>({
   user: null,
   loading: true,
-  refresh: async () => undefined,
+  refresh: async () => null,
   logout: async () => undefined,
 });
 
@@ -26,8 +26,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const me = await api<Profile>('/users/me');
       setUser(me);
+      return me;
     } catch {
       setUser(null);
+      return null;
     } finally {
       setLoading(false);
     }

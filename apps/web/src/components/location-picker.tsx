@@ -24,6 +24,7 @@ export function LocationPicker() {
   if (!user) return null;
 
   async function choose(locality: string) {
+    if (!user) return;
     if (user.localities[0] === locality) {
       setOpen(false);
       return;

@@ -1,17 +1,20 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { FormEvent, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { FormEvent, Suspense, useState } from 'react';
 import { Logo } from '@/components/logo';
 import { api, setToken } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { homeForUser } from '@/lib/routes';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { refresh } = useAuth();
   const [error, setError] = useState('');
   const [mode, setMode] = useState<'email' | 'phone'>('email');
+  const pgOwner = searchParams.get('as') === 'pg-owner';
 
   async function onEmail(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -25,8 +28,8 @@ export default function LoginPage() {
         }),
       });
       setToken(res.accessToken);
-      await refresh();
-      router.push('/discover');
+      const me = await refresh();
+      router.push(homeForUser(me));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     }
@@ -67,7 +70,12 @@ export default function LoginPage() {
         <div className="lg:hidden">
           <Logo href="/" />
         </div>
-        <h1 className="mt-8 text-3xl font-semibold">Sign in to Alaya</h1>
+        <h1 className="mt-8 text-3xl font-semibold">{pgOwner ? 'PG operator sign in' : 'Sign in to Alaya'}</h1>
+        {pgOwner && (
+          <p className="mt-2 text-sm text-muted">
+            Use the same account you created as a PG operator. You&apos;ll land on your dashboard.
+          </p>
+        )}
         <div className="mt-6 grid grid-cols-2 rounded-full bg-[#FFE8F0] p-1 text-sm">
           <button className={`rounded-full py-2 ${mode === 'email' ? 'bg-white font-medium shadow-sm' : 'text-muted'}`} onClick={() => setMode('email')}>
             Email
@@ -91,9 +99,28 @@ export default function LoginPage() {
         )}
         {error && <p className="mt-4 text-sm text-orange-700">{error}</p>}
         <p className="mt-6 text-sm text-muted">
-          New here? <Link href="/register" className="text-clay">Create a living profile</Link>
+          New here?{' '}
+          <Link href={pgOwner ? '/register?as=pg-owner' : '/register'} className="text-clay">
+            {pgOwner ? 'Create a PG operator account' : 'Create a living profile'}
+          </Link>
         </p>
+        {!pgOwner && (
+          <p className="mt-3 text-sm text-muted">
+            List PG beds?{' '}
+            <Link href="/login?as=pg-owner" className="text-clay">PG operator sign in</Link>
+            {' · '}
+            <Link href="/register?as=pg-owner" className="text-clay">Register as PG operator</Link>
+          </p>
+        )}
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<p className="px-5 py-16 text-center text-muted">Loading…</p>}>
+      <LoginForm />
+    </Suspense>
   );
 }

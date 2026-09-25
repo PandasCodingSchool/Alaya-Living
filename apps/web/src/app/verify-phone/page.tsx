@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, Suspense, useState } from 'react';
 import { api, setToken } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { homeForUser } from '@/lib/routes';
 
 function VerifyForm() {
   const router = useRouter();
@@ -26,8 +27,8 @@ function VerifyForm() {
         }),
       });
       setToken(res.accessToken);
-      await refresh();
-      router.push(user?.onboardingDone ? '/discover' : '/onboarding');
+      const me = await refresh();
+      router.push(homeForUser(me));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid OTP');
     }

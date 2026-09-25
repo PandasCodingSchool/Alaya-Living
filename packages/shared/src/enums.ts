@@ -1,7 +1,14 @@
+export const UserRole = {
+  USER: 'USER',
+  PG_OWNER: 'PG_OWNER',
+  ADMIN: 'ADMIN',
+} as const;
+
 export const UserIntent = {
   HAVE_ROOM: 'HAVE_ROOM',
   NEED_ROOM: 'NEED_ROOM',
   FIND_FLATMATES: 'FIND_FLATMATES',
+  LIST_PG: 'LIST_PG',
   OTHER: 'OTHER',
 } as const;
 

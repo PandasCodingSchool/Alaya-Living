@@ -1,8 +1,8 @@
 'use client';
 
 import { LANGUAGES, LOCALITIES, TECH_PARKS, officeLocalities } from '@fmr/shared';
-import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Avatar } from '@/components/avatar';
 import { api, apiUpload } from '@/lib/api';
@@ -10,8 +10,16 @@ import { useAuth } from '@/lib/auth';
 
 const steps = ['Intent', 'About you', 'Location', 'Budget', 'Lifestyle', 'Languages'];
 
-export default function OnboardingPage() {
+function onboardingDestination(intent: string) {
+  if (intent === 'HAVE_ROOM') return '/rooms/new';
+  if (intent === 'LIST_PG') return '/operator';
+  if (intent === 'FIND_FLATMATES') return '/groups/new';
+  return '/discover';
+}
+
+function OnboardingForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, refresh } = useAuth();
   const [step, setStep] = useState(0);
   const [error, setError] = useState('');
@@ -47,6 +55,13 @@ export default function OnboardingPage() {
     languages: ['English', 'Hindi'] as string[],
     languageMatters: false,
   });
+
+  useEffect(() => {
+    const presetIntent = searchParams.get('intent');
+    if (presetIntent === 'LIST_PG') {
+      setForm((current) => ({ ...current, intent: 'LIST_PG' }));
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!user) return;
@@ -124,7 +139,7 @@ export default function OnboardingPage() {
         }),
       });
       await refresh();
-      router.push(editing ? '/profile' : form.intent === 'HAVE_ROOM' ? '/rooms/new' : '/discover');
+      router.push(editing ? '/profile' : onboardingDestination(form.intent));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save profile');
     }
@@ -169,12 +184,19 @@ export default function OnboardingPage() {
         <p className="mt-2 text-sm text-muted">Hi {existingName} — we already have your name from sign-up.</p>
       )}
 
+      {step === 0 && form.intent === 'LIST_PG' && (
+        <p className="mt-4 rounded-xl bg-[#FFF1F5] px-4 py-3 text-sm text-ink/80">
+          PG operator path selected — after onboarding you&apos;ll go straight to your dashboard.
+        </p>
+      )}
+
       {step === 0 && (
         <div className="mt-8 space-y-3">
           {[
             ['HAVE_ROOM', 'I have a room', 'Find one compatible person to share it.'],
             ['NEED_ROOM', 'I need a room', 'Find affordable rooms and compatible occupants.'],
-            ['FIND_FLATMATES', 'I want flatmates', 'Captured for later — no group workflow yet.'],
+            ['FIND_FLATMATES', 'I want flatmates', 'Form a group and search PGs together after onboarding.'],
+            ['LIST_PG', 'I list PG beds', 'List beds, set pricing, and get inquiries from seekers.'],
             ['OTHER', 'Other', 'Exploring options, helping someone else, or not sure yet.'],
           ].map(([value, title, copy]) => (
             <button
@@ -372,5 +394,13 @@ export default function OnboardingPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<p className="px-5 py-16 text-center text-muted">Loading…</p>}>
+      <OnboardingForm />
+    </Suspense>
   );
 }
