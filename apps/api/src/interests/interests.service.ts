@@ -1,5 +1,6 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { MatchReasonKind } from '@prisma/client';
+import { EmailService } from '../email/email.service';
 import { MatchingService } from '../matching/matching.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { toPublicProfile, userInclude } from '../users/user.mapper';
@@ -9,6 +10,7 @@ export class InterestsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly matching: MatchingService,
+    private readonly email: EmailService,
   ) {}
 
   async express(fromUserId: string, toUserId: string, roomId?: string, pgListingId?: string) {
@@ -24,6 +26,7 @@ export class InterestsService {
     const existing = await this.prisma.interest.findUnique({
       where: { fromUserId_toUserId: { fromUserId, toUserId } },
     });
+    const isNewPgInquiry = Boolean(pgListingId && (!existing || existing.pgListingId !== pgListingId));
     if (existing) {
       if (roomId || pgListingId) {
         await this.prisma.interest.update({
@@ -36,6 +39,9 @@ export class InterestsService {
       }
     } else {
       await this.prisma.interest.create({ data: { fromUserId, toUserId, roomId, pgListingId } });
+    }
+    if (isNewPgInquiry && pgListingId) {
+      void this.notifyPgInquiry(fromUserId, toUserId, pgListingId);
     }
 
     const reverse = await this.prisma.interest.findUnique({
@@ -112,6 +118,22 @@ export class InterestsService {
       conversationId: match?.conversation?.id ?? null,
       status: match?.status ?? (outgoing ? 'INTEREST_SENT' : incoming ? 'INTEREST_RECEIVED' : 'DISCOVERED'),
     };
+  }
+
+  private async notifyPgInquiry(fromUserId: string, toUserId: string, pgListingId: string) {
+    const [operator, seeker, pg] = await Promise.all([
+      this.prisma.user.findUnique({ where: { id: toUserId } }),
+      this.prisma.user.findUnique({ where: { id: fromUserId }, include: userInclude }),
+      this.prisma.pgListing.findUnique({ where: { id: pgListingId } }),
+    ]);
+    if (!operator?.email || !pg) return;
+    const seekerName = seeker ? toPublicProfile(seeker).name : 'A seeker';
+    const webOrigin = process.env.WEB_ORIGIN?.split(',')[0] || 'http://localhost:3001';
+    await this.email.send(
+      operator.email,
+      `New inquiry on ${pg.title}`,
+      `${seekerName} messaged you about "${pg.title}" in ${pg.locality}.\n\nView leads: ${webOrigin}/operator`,
+    );
   }
 
   private async createMatch(userId1: string, userId2: string) {

@@ -6,7 +6,8 @@ export function isPgOperator(user: Pick<Profile, 'role'> | null | undefined) {
 
 export function homeForUser(user: Pick<Profile, 'role' | 'onboardingDone'> | null | undefined) {
   if (!user?.onboardingDone) return '/onboarding';
-  if (isPgOperator(user) || user?.role === 'ADMIN') return '/operator';
+  if (user?.role === 'ADMIN') return '/admin';
+  if (isPgOperator(user)) return '/operator';
   return '/discover';
 }
 

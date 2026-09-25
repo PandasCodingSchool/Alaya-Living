@@ -93,6 +93,8 @@ export interface Membership {
   matchCount: number;
   freeLimit: number;
   freeRemaining: number;
+  paymentsEnabled?: boolean;
+  premiumAmountInr?: number;
 }
 
 export interface Agreement {

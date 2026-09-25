@@ -135,6 +135,7 @@ model User {
   pgListings             PgListing[]
   flatListings           FlatListing[]
   reportsCreated         Report[]            @relation("ReportsCreated")
+  subscriptions          Subscription[]
 }
 
 model Profile {
@@ -554,4 +555,49 @@ model Block {
   createdAt DateTime @default(now())
 
   @@unique([fromUserId, toUserId])
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum SubscriptionSource {
+  RAZORPAY
+  DEMO
+  ADMIN
+}
+
+model SubscriptionPlan {
+  id            String         @id @default(cuid())
+  name          String
+  description   String?
+  amountPaise   Int
+  durationDays  Int            @default(30)
+  active        Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id                String             @id @default(cuid())
+  userId            String
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId            String?
+  plan              SubscriptionPlan?  @relation(fields: [planId], references: [id], onDelete: SetNull)
+  status            SubscriptionStatus @default(ACTIVE)
+  source            SubscriptionSource @default(RAZORPAY)
+  amountPaise       Int
+  currency          String             @default("INR")
+  razorpayOrderId   String?
+  razorpayPaymentId String?            @unique
+  startsAt          DateTime           @default(now())
+  expiresAt         DateTime
+  createdAt         DateTime           @default(now())
+
+  @@index([userId, status])
+  @@index([createdAt])
+  @@index([status, expiresAt])
 }

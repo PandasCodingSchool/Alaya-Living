@@ -1,10 +1,8 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
-import { ReportStatus, ReportTargetKind, User, UserRole } from '@prisma/client';
+import { ReportTargetKind, User } from '@prisma/client';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { Roles } from '../auth/roles.decorator';
-import { RolesGuard } from '../auth/roles.guard';
 import { SafetyService } from './safety.service';
 
 class BlockDto {
@@ -48,10 +46,4 @@ export class SafetyController {
     return this.safety.report(user.id, dto);
   }
 
-  @Get('reports')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
-  listReports(@Query('status') status?: ReportStatus) {
-    return this.safety.listReports(status);
-  }
 }

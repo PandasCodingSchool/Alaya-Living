@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { ReportStatus, ReportTargetKind } from '@prisma/client';
+import { ReportTargetKind } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { toPublicProfile, userInclude } from '../users/user.mapper';
 
@@ -40,25 +40,6 @@ export class SafetyService {
       },
     });
     return { id: row.id, ok: true };
-  }
-
-  async listReports(status?: ReportStatus) {
-    const rows = await this.prisma.report.findMany({
-      where: status ? { status } : undefined,
-      include: { reporter: { include: userInclude } },
-      orderBy: { createdAt: 'desc' },
-      take: 100,
-    });
-    return rows.map((row) => ({
-      id: row.id,
-      targetKind: row.targetKind,
-      targetId: row.targetId,
-      reason: row.reason,
-      details: row.details,
-      status: row.status,
-      createdAt: row.createdAt.toISOString(),
-      reporter: toPublicProfile(row.reporter),
-    }));
   }
 
   private async assertTarget(kind: ReportTargetKind, targetId: string) {

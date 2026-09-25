@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { Bookmark, Building2, Compass, Heart, Home, Menu, MessageCircle, Plus, X } from 'lucide-react';
+import { Bookmark, Building2, Compass, Heart, Home, Menu, MessageCircle, Plus, Shield, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useInbox } from '@/lib/inbox';
@@ -27,10 +27,16 @@ const operatorLinks = [
   { href: '/chat', label: 'Messages', icon: MessageCircle },
 ];
 
+const adminLinks = [
+  { href: '/admin', label: 'Admin', icon: Shield },
+  { href: '/chat', label: 'Messages', icon: MessageCircle },
+];
+
 type NavLink = (typeof seekerLinks)[number];
 
 function linkActive(pathname: string, link: NavLink) {
   if (link.match) return link.match.some((path) => pathname.startsWith(path));
+  if (link.href === '/admin') return pathname.startsWith('/admin');
   if (link.href === '/operator') return pathname.startsWith('/operator');
   if (link.href === '/pgs') return pathname.startsWith('/pgs');
   return pathname.startsWith(link.href);
@@ -44,9 +50,10 @@ export function AppHeader() {
   const [incoming, setIncoming] = useState(0);
   const [listingId, setListingId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const isAdmin = user?.role === 'ADMIN';
   const pgOperator = isPgOperator(user);
-  const isOperator = pgOperator || user?.role === 'ADMIN';
-  const navLinks = pgOperator ? operatorLinks : seekerLinks;
+  const isOperator = pgOperator;
+  const navLinks = isAdmin ? adminLinks : pgOperator ? operatorLinks : seekerLinks;
 
   useEffect(() => {
     if (!user) return;
@@ -118,7 +125,12 @@ export function AppHeader() {
                 <Bookmark className="h-4 w-4" />
               </Link>
             )}
-            {isOperator ? (
+            {isAdmin ? (
+              <Link href="/admin" className="btn-primary hidden h-10 px-4 sm:inline-flex">
+                <Shield className="mr-1 h-4 w-4" />
+                Admin
+              </Link>
+            ) : isOperator ? (
               <Link href="/operator" className="btn-primary hidden h-10 px-4 sm:inline-flex">
                 <Building2 className="mr-1 h-4 w-4" />
                 Dashboard
@@ -159,17 +171,22 @@ export function AppHeader() {
                       </Link>
                     </>
                   )}
+                  {isAdmin && (
+                    <Link href="/admin" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-2 text-sm hover:bg-[#FFF1F5]">
+                      Admin panel
+                    </Link>
+                  )}
                   {isOperator && (
                     <Link href="/operator" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-2 text-sm hover:bg-[#FFF1F5]">
                       Operator dashboard
                     </Link>
                   )}
                   <Link
-                    href={isOperator ? '/operator' : listingId ? `/rooms/${listingId}/edit` : '/rooms/new'}
+                    href={isAdmin ? '/admin' : isOperator ? '/operator' : listingId ? `/rooms/${listingId}/edit` : '/rooms/new'}
                     onClick={() => setOpen(false)}
                     className="block rounded-xl px-3 py-2 text-sm hover:bg-[#FFF1F5] sm:hidden"
                   >
-                    {isOperator ? 'Operator dashboard' : listingId ? 'Edit listing' : 'List a room'}
+                    {isAdmin ? 'Admin panel' : isOperator ? 'Operator dashboard' : listingId ? 'Edit listing' : 'List a room'}
                   </Link>
                   <button
                     onClick={() => {

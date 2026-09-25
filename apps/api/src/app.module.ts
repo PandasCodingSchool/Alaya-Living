@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { AdminModule } from './admin/admin.module';
 import { AgreementsModule } from './agreements/agreements.module';
+import { EmailModule } from './email/email.module';
 import { AuthModule } from './auth/auth.module';
 import { BookmarksModule } from './bookmarks/bookmarks.module';
 import { FlatsModule } from './flats/flats.module';
@@ -25,7 +27,9 @@ import { UsersModule } from './users/users.module';
     PrismaModule,
     RedisModule,
     StorageModule,
+    EmailModule,
     AuthModule,
+    AdminModule,
     UsersModule,
     RoomsModule,
     MatchingModule,
