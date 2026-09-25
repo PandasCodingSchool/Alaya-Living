@@ -8,7 +8,8 @@ import { Avatar } from '@/components/avatar';
 import { api, apiUpload } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 
-const steps = ['Intent', 'About you', 'Location', 'Budget', 'Lifestyle', 'Languages'];
+const seekerSteps = ['Intent', 'About you', 'Location', 'Budget', 'Lifestyle', 'Languages'];
+const pgOwnerSteps = ['Intent', 'Your profile', 'PG areas'];
 
 function onboardingDestination(intent: string) {
   if (intent === 'HAVE_ROOM') return '/rooms/new';
@@ -25,6 +26,7 @@ function OnboardingForm() {
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
   const photoRef = useRef<HTMLInputElement>(null);
+  const skippedIntent = useRef(false);
   const editing = !!user?.onboardingDone;
   const existingName = user?.name && user.name !== 'Member' ? user.name : '';
   const [form, setForm] = useState({
@@ -56,12 +58,23 @@ function OnboardingForm() {
     languageMatters: false,
   });
 
+  const isPgOwner = form.intent === 'LIST_PG';
+  const steps = isPgOwner ? pgOwnerSteps : seekerSteps;
+
   useEffect(() => {
     const presetIntent = searchParams.get('intent');
     if (presetIntent === 'LIST_PG') {
       setForm((current) => ({ ...current, intent: 'LIST_PG' }));
+      if (!editing && !skippedIntent.current) {
+        skippedIntent.current = true;
+        setStep(1);
+      }
     }
-  }, [searchParams]);
+  }, [searchParams, editing]);
+
+  useEffect(() => {
+    if (step > steps.length - 1) setStep(steps.length - 1);
+  }, [step, steps.length]);
 
   useEffect(() => {
     if (!user) return;
@@ -101,43 +114,61 @@ function OnboardingForm() {
 
   async function finish() {
     try {
-      await api('/users/me', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          firstName: form.firstName || existingName || undefined,
-          age: Number(form.age),
-          gender: form.gender,
-          occupation: form.occupation,
-          bio: form.bio,
-          workLocation: form.workLocation,
-          workMode: form.workMode,
-          intent: form.intent,
-          onboardingDone: true,
-        }),
-      });
-      await api('/preferences', {
-        method: 'PUT',
-        body: JSON.stringify({
-          minBudget: Number(form.minBudget),
-          maxBudget: Number(form.maxBudget),
-          moveInDate: form.moveInDate,
-          sleepStart: Number(form.sleepStart),
-          sleepEnd: Number(form.sleepEnd),
-          cleanliness: Number(form.cleanliness),
-          noiseTolerance: Number(form.noiseTolerance),
-          cookingFrequency: Number(form.cookingFrequency),
-          guestFrequency: Number(form.guestFrequency),
-          foodPreference: form.foodPreference,
-          smokingPreference: form.smokingPreference,
-          smokingRequired: form.smokingRequired,
-          alcoholPreference: form.alcoholPreference,
-          pets: form.pets,
-          localities: form.localities,
-          preferredRadiusKm: form.preferredRadiusKm,
-          languages: form.languages,
-          languageMatters: form.languageMatters,
-        }),
-      });
+      if (isPgOwner) {
+        await api('/users/me', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            firstName: form.firstName || existingName || undefined,
+            age: Number(form.age),
+            gender: form.gender,
+            bio: form.bio,
+            intent: 'LIST_PG',
+            onboardingDone: true,
+          }),
+        });
+        await api('/preferences', {
+          method: 'PUT',
+          body: JSON.stringify({ localities: form.localities }),
+        });
+      } else {
+        await api('/users/me', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            firstName: form.firstName || existingName || undefined,
+            age: Number(form.age),
+            gender: form.gender,
+            occupation: form.occupation,
+            bio: form.bio,
+            workLocation: form.workLocation,
+            workMode: form.workMode,
+            intent: form.intent,
+            onboardingDone: true,
+          }),
+        });
+        await api('/preferences', {
+          method: 'PUT',
+          body: JSON.stringify({
+            minBudget: Number(form.minBudget),
+            maxBudget: Number(form.maxBudget),
+            moveInDate: form.moveInDate,
+            sleepStart: Number(form.sleepStart),
+            sleepEnd: Number(form.sleepEnd),
+            cleanliness: Number(form.cleanliness),
+            noiseTolerance: Number(form.noiseTolerance),
+            cookingFrequency: Number(form.cookingFrequency),
+            guestFrequency: Number(form.guestFrequency),
+            foodPreference: form.foodPreference,
+            smokingPreference: form.smokingPreference,
+            smokingRequired: form.smokingRequired,
+            alcoholPreference: form.alcoholPreference,
+            pets: form.pets,
+            localities: form.localities,
+            preferredRadiusKm: form.preferredRadiusKm,
+            languages: form.languages,
+            languageMatters: form.languageMatters,
+          }),
+        });
+      }
       await refresh();
       router.push(editing ? '/profile' : onboardingDestination(form.intent));
     } catch (err) {
@@ -148,7 +179,7 @@ function OnboardingForm() {
   function leave() {
     if (editing) router.push('/profile');
     else if (typeof window !== 'undefined' && window.history.length > 1) router.back();
-    else router.push('/discover');
+    else router.push('/');
   }
 
   async function onPhoto(file?: File) {
@@ -165,6 +196,15 @@ function OnboardingForm() {
     }
   }
 
+  const showIntentStep = step === 0;
+  const showSeekerAbout = !isPgOwner && step === 1;
+  const showPgProfile = isPgOwner && step === 1;
+  const showSeekerLocation = !isPgOwner && step === 2;
+  const showPgAreas = isPgOwner && step === 2;
+  const showBudget = !isPgOwner && step === 3;
+  const showLifestyle = !isPgOwner && step === 4;
+  const showLanguages = !isPgOwner && step === 5;
+
   return (
     <div className="mx-auto max-w-xl px-5 py-12">
       <div className="flex items-center justify-between">
@@ -179,18 +219,20 @@ function OnboardingForm() {
       <p className="mt-6 font-mono text-[11px] text-muted">
         STEP {step + 1}/{steps.length} · {steps[step].toUpperCase()}
       </p>
-      <h1 className="mt-3 text-3xl font-semibold">{editing ? 'Edit preferences' : 'How you actually live'}</h1>
+      <h1 className="mt-3 text-3xl font-semibold">
+        {editing ? 'Edit preferences' : isPgOwner ? 'Set up your PG operator profile' : 'How you actually live'}
+      </h1>
       {existingName && (
         <p className="mt-2 text-sm text-muted">Hi {existingName} — we already have your name from sign-up.</p>
       )}
 
-      {step === 0 && form.intent === 'LIST_PG' && (
+      {showIntentStep && isPgOwner && (
         <p className="mt-4 rounded-xl bg-[#FFF1F5] px-4 py-3 text-sm text-ink/80">
-          PG operator path selected — after onboarding you&apos;ll go straight to your dashboard.
+          PG operator path — we&apos;ll skip roommate lifestyle questions and take you to your dashboard.
         </p>
       )}
 
-      {step === 0 && (
+      {showIntentStep && (
         <div className="mt-8 space-y-3">
           {[
             ['HAVE_ROOM', 'I have a room', 'Find one compatible person to share it.'],
@@ -211,7 +253,7 @@ function OnboardingForm() {
         </div>
       )}
 
-      {step === 1 && (
+      {(showSeekerAbout || showPgProfile) && (
         <div className="mt-8 space-y-4">
           <div className="flex items-center gap-4">
             <Avatar name={form.firstName || user?.name || 'Member'} photoUrl={user?.photoUrl} size={72} />
@@ -219,7 +261,9 @@ function OnboardingForm() {
               <button type="button" onClick={() => photoRef.current?.click()} className="btn-ghost" disabled={uploading}>
                 {uploading ? 'Uploading…' : user?.photoUrl ? 'Change photo' : 'Upload photo'}
               </button>
-              <p className="mt-2 text-xs text-muted">Shown on Discover and Matches.</p>
+              <p className="mt-2 text-xs text-muted">
+                {isPgOwner ? 'Shown to seekers who message you about a PG.' : 'Shown on Discover and Matches.'}
+              </p>
               <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={(event) => onPhoto(event.target.files?.[0])} />
             </div>
           </div>
@@ -233,19 +277,28 @@ function OnboardingForm() {
             <option value="NON_BINARY">Non-binary</option>
             <option value="PREFER_NOT_TO_SAY">Other / prefer not to say</option>
           </select>
-          <input className="field" placeholder="Occupation" value={form.occupation} onChange={(e) => setForm({ ...form, occupation: e.target.value })} />
-          <textarea className="field" placeholder="Short bio" value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} />
-          <select className="field" value={form.workMode} onChange={(e) => setForm({ ...form, workMode: e.target.value })}>
-            <option value="OFFICE">Office</option>
-            <option value="HYBRID">Hybrid</option>
-            <option value="REMOTE">Remote</option>
-            <option value="STUDENT">Student</option>
-          </select>
-          <p className="text-xs text-muted">Same-gender matches only. Most PGs do not allow mixed sharing.</p>
+          {!isPgOwner && (
+            <>
+              <input className="field" placeholder="Occupation" value={form.occupation} onChange={(e) => setForm({ ...form, occupation: e.target.value })} />
+              <select className="field" value={form.workMode} onChange={(e) => setForm({ ...form, workMode: e.target.value })}>
+                <option value="OFFICE">Office</option>
+                <option value="HYBRID">Hybrid</option>
+                <option value="REMOTE">Remote</option>
+                <option value="STUDENT">Student</option>
+              </select>
+              <p className="text-xs text-muted">Same-gender matches only. Most PGs do not allow mixed sharing.</p>
+            </>
+          )}
+          <textarea
+            className="field"
+            placeholder={isPgOwner ? 'Short bio for seekers (optional)' : 'Short bio'}
+            value={form.bio}
+            onChange={(e) => setForm({ ...form, bio: e.target.value })}
+          />
         </div>
       )}
 
-      {step === 2 && (
+      {showSeekerLocation && (
         <div className="mt-8 space-y-5">
           <div>
             <p className="text-sm font-medium">Where do you work?</p>
@@ -302,7 +355,30 @@ function OnboardingForm() {
         </div>
       )}
 
-      {step === 3 && (
+      {showPgAreas && (
+        <div className="mt-8 space-y-5">
+          <div>
+            <p className="text-sm font-medium">Where are your PG properties?</p>
+            <p className="mt-1 text-xs text-muted">
+              Select localities where you operate. You&apos;ll add exact addresses when creating each listing.
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              {LOCALITIES.map((locality) => (
+                <button
+                  key={locality}
+                  type="button"
+                  onClick={() => setForm({ ...form, localities: toggle(form.localities, locality) })}
+                  className={`rounded-lg border px-3 py-3 text-sm ${form.localities.includes(locality) ? 'border-clay bg-white' : 'border-sand bg-white'}`}
+                >
+                  {locality}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showBudget && (
         <div className="mt-8 space-y-4">
           <label className="block text-sm">Min budget
             <input type="number" className="field mt-1" value={form.minBudget} onChange={(e) => setForm({ ...form, minBudget: Number(e.target.value) })} />
@@ -316,7 +392,7 @@ function OnboardingForm() {
         </div>
       )}
 
-      {step === 4 && (
+      {showLifestyle && (
         <div className="mt-8 space-y-4">
           <label className="block text-sm">Sleep hour (0–23)
             <input type="number" className="field mt-1" value={form.sleepStart} onChange={(e) => setForm({ ...form, sleepStart: Number(e.target.value) })} />
@@ -353,7 +429,7 @@ function OnboardingForm() {
         </div>
       )}
 
-      {step === 5 && (
+      {showLanguages && (
         <div className="mt-8 space-y-4">
           <div className="grid grid-cols-2 gap-3">
             {LANGUAGES.map((language) => (
@@ -389,7 +465,7 @@ function OnboardingForm() {
           </button>
         ) : (
           <button onClick={finish} className="btn-primary">
-            {editing ? 'Save preferences' : 'See matches'}
+            {editing ? 'Save preferences' : isPgOwner ? 'Go to dashboard' : 'See matches'}
           </button>
         )}
       </div>

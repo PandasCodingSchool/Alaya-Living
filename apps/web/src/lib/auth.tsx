@@ -39,6 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await api('/auth/logout', { method: 'POST' }).catch(() => undefined);
     setToken(null);
     setUser(null);
+    window.location.href = '/';
   };
 
   useEffect(() => {

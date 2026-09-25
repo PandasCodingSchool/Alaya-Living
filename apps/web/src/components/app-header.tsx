@@ -142,7 +142,9 @@ export function AppHeader() {
                 <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-sand bg-white p-2 shadow-panel">
                   <div className="px-3 py-2">
                     <p className="text-sm font-semibold">{user.name}</p>
-                    <p className="text-xs text-muted">{user.occupation || 'Complete your living profile'}</p>
+                    <p className="text-xs text-muted">
+                      {pgOperator ? 'PG operator' : user.occupation || 'Complete your living profile'}
+                    </p>
                   </div>
                   <Link href="/profile" onClick={() => setOpen(false)} className="block rounded-xl px-3 py-2 text-sm hover:bg-[#FFF1F5]">
                     View profile
