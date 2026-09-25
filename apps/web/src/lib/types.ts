@@ -147,6 +147,33 @@ export interface FlatGroup {
   members: { role: string; status: string; user: Profile }[];
   suggestedPeople?: Profile[];
   suggestedPgs?: PgListing[];
+  suggestedFlats?: FlatListing[];
+}
+
+export interface FlatListing {
+  id: string;
+  title: string;
+  locality: string;
+  city: string;
+  bhk: 'TWO_BHK' | 'THREE_BHK';
+  monthlyRent: number;
+  deposit: number | null;
+  furnished: boolean;
+  photos: string[];
+  amenities: string[];
+  notes?: string | null;
+  availableFrom: string;
+  status?: string;
+  listedBy: Profile | null;
+}
+
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  type: 'TEXT' | 'IMAGE';
+  body: string;
+  imageUrl: string | null;
+  createdAt: string;
 }
 
 export interface PgOperatorDashboard {
@@ -162,6 +189,7 @@ export interface PgOperatorDashboard {
     id: string;
     createdAt: string;
     user: Profile;
+    pgListing: { id: string; title: string; locality: string } | null;
     matched: boolean;
     conversationId: string | null;
   }[];

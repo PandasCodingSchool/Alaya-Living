@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { IsString, MinLength } from 'class-validator';
 import { User } from '@prisma/client';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -33,6 +34,20 @@ export class ChatController {
   @Post(':id/messages')
   async send(@CurrentUser() user: User, @Param('id') id: string, @Body() dto: SendMessageDto) {
     const { message, otherUserId } = await this.chat.send(user.id, id, dto.body);
+    this.gateway.emitToConversation(id, 'message', message);
+    this.gateway.emitToUser(otherUserId, 'inbox', { conversationId: id, message });
+    return message;
+  }
+
+  @Post(':id/messages/image')
+  @UseInterceptors(FileInterceptor('file'))
+  async sendImage(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body('caption') caption?: string,
+  ) {
+    const { message, otherUserId } = await this.chat.sendImage(user.id, id, file, caption);
     this.gateway.emitToConversation(id, 'message', message);
     this.gateway.emitToUser(otherUserId, 'inbox', { conversationId: id, message });
     return message;

@@ -12,6 +12,10 @@ class ExpressInterestDto {
   @IsOptional()
   @IsString()
   roomId?: string;
+
+  @IsOptional()
+  @IsString()
+  pgListingId?: string;
 }
 
 @Controller()
@@ -21,7 +25,7 @@ export class InterestsController {
 
   @Post('interests')
   express(@CurrentUser() user: User, @Body() dto: ExpressInterestDto) {
-    return this.interests.express(user.id, dto.toUserId, dto.roomId);
+    return this.interests.express(user.id, dto.toUserId, dto.roomId, dto.pgListingId);
   }
 
   @Get('interests')

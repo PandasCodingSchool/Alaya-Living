@@ -5,12 +5,13 @@ import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { MatchCard } from '@/components/match-card';
+import { PgCard } from '@/components/pg-card';
 import { RoomCard } from '@/components/room-card';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { usePgOperatorGuard } from '@/lib/use-pg-operator-guard';
 import { inr } from '@/lib/format';
-import type { Profile, Room } from '@/lib/types';
+import type { PgListing, Profile, Room } from '@/lib/types';
 
 const emptyFilters = {
   localities: [] as string[],
@@ -18,6 +19,7 @@ const emptyFilters = {
   maxBudget: '',
   food: '',
   roomType: '',
+  gender: '',
 };
 
 export default function DiscoverPage() {
@@ -34,9 +36,10 @@ function DiscoverInner() {
   const searchParams = useSearchParams();
   const [search, setSearch] = useState((searchParams.get('q') || '').trim());
   const query = search.trim().toLowerCase();
-  const [tab, setTab] = useState<'people' | 'rooms'>('people');
+  const [tab, setTab] = useState<'people' | 'rooms' | 'pgs'>('people');
   const [people, setPeople] = useState<Profile[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [pgs, setPgs] = useState<PgListing[]>([]);
   const [error, setError] = useState('');
   const [openFilters, setOpenFilters] = useState(false);
   const [filters, setFilters] = useState(emptyFilters);
@@ -67,19 +70,26 @@ function DiscoverInner() {
     const params = `?radiusKm=${radiusKm}&origin=${origin}`;
     const load = async () => {
       try {
-        const [p, r] = await Promise.all([
+        const pgParams = new URLSearchParams();
+        if (filters.localities.length === 1) pgParams.set('locality', filters.localities[0]);
+        if (filters.minBudget) pgParams.set('minBudget', filters.minBudget);
+        if (filters.maxBudget) pgParams.set('maxBudget', filters.maxBudget);
+        if (filters.gender) pgParams.set('gender', filters.gender);
+        const [p, r, pgRows] = await Promise.all([
           api<Profile[]>(`/discover/people${params}`),
           api<Room[]>(`/discover/rooms${params}`),
+          api<PgListing[]>(`/pgs?${pgParams}`),
         ]);
         setPeople(p);
         setRooms(r);
+        setPgs(pgRows);
         setError('');
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not load matches');
       }
     };
     load();
-  }, [user, radiusKm, origin]);
+  }, [user, radiusKm, origin, filters.localities, filters.minBudget, filters.maxBudget, filters.gender]);
 
   const activeCount = [
     filters.localities.length,
@@ -87,6 +97,7 @@ function DiscoverInner() {
     filters.maxBudget,
     filters.food,
     tab === 'rooms' ? filters.roomType : '',
+    tab === 'pgs' ? filters.gender : '',
     radiusKm !== (user?.preferredRadiusKm ?? 5) ? 1 : 0,
   ].filter(Boolean).length;
 
@@ -117,6 +128,17 @@ function DiscoverInner() {
       return true;
     });
   }, [rooms, filters, query]);
+
+  const visiblePgs = useMemo(() => {
+    return pgs.filter((pg) => {
+      if (filters.localities.length && !filters.localities.includes(pg.locality)) return false;
+      if (filters.minBudget && pg.monthlyRent < Number(filters.minBudget)) return false;
+      if (filters.maxBudget && pg.monthlyRent > Number(filters.maxBudget)) return false;
+      if (filters.gender && pg.genderPolicy !== filters.gender && pg.genderPolicy !== 'ANY') return false;
+      if (query && ![pg.title, pg.locality, pg.owner.name].join(' ').toLowerCase().includes(query)) return false;
+      return true;
+    });
+  }, [pgs, filters, query]);
 
   if (loading) return <p className="px-5 py-16 text-center text-muted">Loading…</p>;
   if (blocked) return null;
@@ -236,7 +258,7 @@ function DiscoverInner() {
             <option value="OTHER">Other</option>
           </select>
         </label>
-      ) : (
+      ) : tab === 'rooms' ? (
         <label className="block text-xs text-muted">
           Room type
           <select className="field mt-1 py-2 text-sm" value={filters.roomType} onChange={(e) => setFilters({ ...filters, roomType: e.target.value })}>
@@ -244,6 +266,16 @@ function DiscoverInner() {
             <option value="SINGLE">Single</option>
             <option value="DOUBLE">Double</option>
             <option value="SHARED">Shared</option>
+          </select>
+        </label>
+      ) : (
+        <label className="block text-xs text-muted">
+          Gender policy
+          <select className="field mt-1 py-2 text-sm" value={filters.gender} onChange={(e) => setFilters({ ...filters, gender: e.target.value })}>
+            <option value="">Any</option>
+            <option value="MALE">Men only</option>
+            <option value="FEMALE">Women only</option>
+            <option value="ANY">Co-ed</option>
           </select>
         </label>
       )}
@@ -285,12 +317,15 @@ function DiscoverInner() {
               <SlidersHorizontal className="mr-2 h-4 w-4" />
               Filter{activeCount ? ` (${activeCount})` : ''}
             </button>
-            <div className="grid grid-cols-2 rounded-full bg-[#FFE8F0] p-1 text-xs sm:text-sm">
-              <button className={`rounded-full px-3 py-1.5 sm:px-4 ${tab === 'people' ? 'bg-white font-medium shadow-sm' : 'text-muted'}`} onClick={() => setTab('people')}>
+            <div className="grid grid-cols-3 rounded-full bg-[#FFE8F0] p-1 text-xs sm:text-sm">
+              <button className={`rounded-full px-2 py-1.5 sm:px-3 ${tab === 'people' ? 'bg-white font-medium shadow-sm' : 'text-muted'}`} onClick={() => setTab('people')}>
                 People {visiblePeople.length ? `(${visiblePeople.length})` : ''}
               </button>
-              <button className={`rounded-full px-3 py-1.5 sm:px-4 ${tab === 'rooms' ? 'bg-white font-medium shadow-sm' : 'text-muted'}`} onClick={() => setTab('rooms')}>
+              <button className={`rounded-full px-2 py-1.5 sm:px-3 ${tab === 'rooms' ? 'bg-white font-medium shadow-sm' : 'text-muted'}`} onClick={() => setTab('rooms')}>
                 Rooms {visibleRooms.length ? `(${visibleRooms.length})` : ''}
+              </button>
+              <button className={`rounded-full px-2 py-1.5 sm:px-3 ${tab === 'pgs' ? 'bg-white font-medium shadow-sm' : 'text-muted'}`} onClick={() => setTab('pgs')}>
+                PGs {visiblePgs.length ? `(${visiblePgs.length})` : ''}
               </button>
             </div>
           </div>
@@ -301,7 +336,13 @@ function DiscoverInner() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={tab === 'people' ? 'Search people by name, work, or locality' : 'Search rooms by locality or host'}
+            placeholder={
+              tab === 'people'
+                ? 'Search people by name, work, or locality'
+                : tab === 'rooms'
+                  ? 'Search rooms by locality or host'
+                  : 'Search PGs by name, locality, or operator'
+            }
             className="w-full rounded-full border border-sand bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-clay"
           />
         </label>
@@ -320,9 +361,9 @@ function DiscoverInner() {
 
         {error && <p className="mt-6 text-orange-700">{error}</p>}
         <div className="mt-6 grid gap-4 md:grid-cols-2">
-          {tab === 'people'
-            ? visiblePeople.map((person) => <MatchCard key={person.id} person={person} />)
-            : visibleRooms.map((room) => <RoomCard key={room.id} room={room} />)}
+          {tab === 'people' && visiblePeople.map((person) => <MatchCard key={person.id} person={person} />)}
+          {tab === 'rooms' && visibleRooms.map((room) => <RoomCard key={room.id} room={room} />)}
+          {tab === 'pgs' && visiblePgs.map((pg) => <PgCard key={pg.id} pg={pg} />)}
         </div>
         {tab === 'people' && !visiblePeople.length && (
           <p className="mt-10 text-muted">
@@ -332,6 +373,11 @@ function DiscoverInner() {
         {tab === 'rooms' && !visibleRooms.length && (
           <p className="mt-10 text-muted">
             {rooms.length ? 'No rooms match these filters. Clear or widen them.' : 'No rooms in this radius. Try 10 km or city-wide.'}
+          </p>
+        )}
+        {tab === 'pgs' && !visiblePgs.length && (
+          <p className="mt-10 text-muted">
+            {pgs.length ? 'No PGs match these filters. Clear or widen them.' : 'No PG beds available right now.'}
           </p>
         )}
       </div>

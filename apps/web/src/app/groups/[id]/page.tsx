@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Avatar } from '@/components/avatar';
+import { FlatCard } from '@/components/flat-card';
 import { PgCard } from '@/components/pg-card';
 import { api } from '@/lib/api';
 import { inr } from '@/lib/format';
@@ -106,18 +107,37 @@ export default function GroupPage() {
       )}
 
       {group.myStatus === 'JOINED' && (
-        <section className="mt-10">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold">PGs for your budget</h2>
-            <button type="button" onClick={searchPgs} className="btn-ghost">Refresh search</button>
-          </div>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            {group.suggestedPgs?.map((pg) => <PgCard key={pg.id} pg={pg} />)}
-          </div>
-          {!group.suggestedPgs?.length && (
-            <p className="mt-4 text-sm text-muted">No PG beds under your combined budget yet. Widen localities or raise the per-person target.</p>
-          )}
-        </section>
+        <>
+          <section className="mt-10">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold">Flats for your group</h2>
+              <Link href="/flats" className="btn-ghost">Browse all flats</Link>
+            </div>
+            <p className="mt-2 text-sm text-muted">
+              {group.targetSize === 2 ? '2 BHK' : '3 BHK'} listings under {inr(group.targetSize * group.targetRentEach)} combined budget.
+            </p>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              {group.suggestedFlats?.map((flat) => (
+                <FlatCard key={flat.id} flat={flat} groupSize={group.targetSize} />
+              ))}
+            </div>
+            {!group.suggestedFlats?.length && (
+              <p className="mt-4 text-sm text-muted">No flats under your combined budget yet. Widen localities or raise the per-person target.</p>
+            )}
+          </section>
+          <section className="mt-10">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold">PGs for your budget</h2>
+              <button type="button" onClick={searchPgs} className="btn-ghost">Refresh search</button>
+            </div>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              {group.suggestedPgs?.map((pg) => <PgCard key={pg.id} pg={pg} />)}
+            </div>
+            {!group.suggestedPgs?.length && (
+              <p className="mt-4 text-sm text-muted">No PG beds under your combined budget yet. Widen localities or raise the per-person target.</p>
+            )}
+          </section>
+        </>
       )}
 
       {group.isOwner && group.status !== 'CLOSED' && (

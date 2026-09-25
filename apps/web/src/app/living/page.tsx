@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Building2, FileText, RefreshCw, Users } from 'lucide-react';
+import { Building2, FileText, Home, RefreshCw, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -17,7 +17,13 @@ const tiles = [
     href: '/groups',
     icon: Users,
     title: 'Flat formation',
-    copy: 'Need 3 people for a 3BHK? Form a group, invite compatible people, then search PGs together.',
+    copy: 'Need 3 people for a 3BHK? Form a group, invite compatible people, then search flats and PGs together.',
+  },
+  {
+    href: '/flats',
+    icon: Home,
+    title: 'Flat discovery',
+    copy: 'Browse 2BHK and 3BHK listings by corridor and budget — ideal when your group is ready to rent together.',
   },
   {
     href: '/replacements',

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Avatar } from '@/components/avatar';
+import { ReportButton } from '@/components/report-button';
 import {
   BedInventoryTable,
   BedQuickToggle,
@@ -68,7 +69,7 @@ export default function PgDetailPage() {
     if (!pg) return;
     const next = await api<InterestState>('/interests', {
       method: 'POST',
-      body: JSON.stringify({ toUserId: pg.owner.id }),
+      body: JSON.stringify({ toUserId: pg.owner.id, pgListingId: pg.id }),
     });
     setState(next);
     if (next.conversationId) router.push(`/chat/${next.conversationId}`);
@@ -163,6 +164,7 @@ export default function PgDetailPage() {
               {state?.matched ? 'Open chat' : state?.interested ? 'Interest sent' : 'Message operator'}
             </button>
             <Link href={`/people/${pg.owner.id}`} className="btn-ghost">View operator</Link>
+            <ReportButton targetKind="PG" targetId={pg.id} />
           </>
         )}
       </div>

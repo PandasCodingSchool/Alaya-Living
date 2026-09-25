@@ -11,23 +11,42 @@ export class InterestsService {
     private readonly matching: MatchingService,
   ) {}
 
-  async express(fromUserId: string, toUserId: string, roomId?: string) {
+  async express(fromUserId: string, toUserId: string, roomId?: string, pgListingId?: string) {
     if (fromUserId === toUserId) throw new ConflictException('Cannot interest yourself');
     const target = await this.prisma.user.findUnique({ where: { id: toUserId } });
     if (!target) throw new NotFoundException('User not found');
+    if (pgListingId) {
+      const pg = await this.prisma.pgListing.findUnique({ where: { id: pgListingId } });
+      if (!pg) throw new NotFoundException('PG listing not found');
+      if (pg.ownerUserId !== toUserId) throw new ConflictException('PG listing does not belong to this operator');
+    }
 
     const existing = await this.prisma.interest.findUnique({
       where: { fromUserId_toUserId: { fromUserId, toUserId } },
     });
-    if (existing) return this.currentState(fromUserId, toUserId);
+    if (existing) {
+      if (roomId || pgListingId) {
+        await this.prisma.interest.update({
+          where: { id: existing.id },
+          data: {
+            ...(roomId ? { roomId } : {}),
+            ...(pgListingId ? { pgListingId } : {}),
+          },
+        });
+      }
+    } else {
+      await this.prisma.interest.create({ data: { fromUserId, toUserId, roomId, pgListingId } });
+    }
 
-    await this.prisma.interest.create({ data: { fromUserId, toUserId, roomId } });
     const reverse = await this.prisma.interest.findUnique({
       where: { fromUserId_toUserId: { fromUserId: toUserId, toUserId: fromUserId } },
     });
-
     if (reverse) {
-      await this.createMatch(fromUserId, toUserId);
+      const [a, b] = fromUserId < toUserId ? [fromUserId, toUserId] : [toUserId, fromUserId];
+      const match = await this.prisma.match.findUnique({
+        where: { userAId_userBId: { userAId: a, userBId: b } },
+      });
+      if (!match) await this.createMatch(fromUserId, toUserId);
     }
 
     return this.currentState(fromUserId, toUserId);

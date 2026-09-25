@@ -1,5 +1,6 @@
 import {
   AlcoholPreference,
+  FlatBhk,
   FlatGroupStatus,
   FoodPreference,
   Gender,
@@ -1004,6 +1005,68 @@ async function main() {
     where: { id: { in: [created.pankaj.id, created.priya.id, created.rahul.id] } },
     data: { role: UserRole.PG_OWNER },
   });
+
+  const demoFlats = [
+    {
+      title: 'Sunrise 3BHK — Bellandur ORR',
+      locality: 'Bellandur',
+      bhk: FlatBhk.THREE_BHK,
+      monthlyRent: 32000,
+      deposit: 160000,
+      furnished: true,
+      amenities: ['WiFi', 'Parking', 'Lift', 'Power backup'],
+      notes: 'Walking distance to RMZ Ecoworld. Owner prefers working professionals.',
+      availableFrom: new Date('2026-10-01'),
+    },
+    {
+      title: 'Green View 2BHK — HSR Sector 2',
+      locality: 'HSR',
+      bhk: FlatBhk.TWO_BHK,
+      monthlyRent: 28000,
+      deposit: 140000,
+      furnished: false,
+      amenities: ['WiFi', 'Parking', 'Balcony'],
+      notes: 'Semi-furnished. Good for two flatmates splitting rent.',
+      availableFrom: new Date('2026-10-15'),
+    },
+    {
+      title: 'Lakefront 3BHK — Whitefield',
+      locality: 'Whitefield',
+      bhk: FlatBhk.THREE_BHK,
+      monthlyRent: 36000,
+      deposit: 180000,
+      furnished: true,
+      amenities: ['WiFi', 'Gym', 'Clubhouse', 'Parking'],
+      notes: 'Near ITPL. Ideal for three IT professionals.',
+      availableFrom: new Date('2026-11-01'),
+    },
+    {
+      title: 'Compact 2BHK — Marathahalli',
+      locality: 'Marathahalli',
+      bhk: FlatBhk.TWO_BHK,
+      monthlyRent: 24000,
+      deposit: 120000,
+      furnished: true,
+      amenities: ['WiFi', 'Lift'],
+      notes: 'Budget-friendly 2BHK for two flatmates near ORR.',
+      availableFrom: new Date('2026-10-05'),
+    },
+    {
+      title: 'Spacious 3BHK — Kadubeesanahalli',
+      locality: 'Kadubeesanahalli',
+      bhk: FlatBhk.THREE_BHK,
+      monthlyRent: 33000,
+      deposit: 165000,
+      furnished: false,
+      amenities: ['WiFi', 'Parking', 'Modular kitchen'],
+      notes: 'Unfurnished with modular kitchen. Close to Bellandur tech parks.',
+      availableFrom: new Date('2026-10-20'),
+    },
+  ];
+
+  for (const flat of demoFlats) {
+    await prisma.flatListing.create({ data: flat });
+  }
 
   const flatGroup = await prisma.flatGroup.create({
     data: {

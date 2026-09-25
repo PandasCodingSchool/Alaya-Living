@@ -90,4 +90,5 @@ export class ChatGateway implements OnGatewayConnection {
     this.emitToUser(otherUserId, 'inbox', { conversationId: data.conversationId, message });
     return message;
   }
+
 }

@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { User } from '@prisma/client';
+import { FlatsService } from '../flats/flats.service';
 import { MatchingService } from '../matching/matching.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { publicMediaUrl } from '../lib/media-url';
@@ -10,6 +11,7 @@ export class GroupsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly matching: MatchingService,
+    private readonly flats: FlatsService,
   ) {}
 
   async list(userId: string) {
@@ -42,10 +44,14 @@ export class GroupsService {
       orderBy: { createdAt: 'desc' },
     });
 
+    const combinedBudget = row.targetSize * row.targetRentEach;
+    const suggestedFlats = await this.flats.forGroup(row.localities, combinedBudget, row.targetSize);
+
     return {
       ...this.toPublic(row, userId),
       suggestedPeople,
       suggestedPgs: pgs.map((pg) => this.toPg(pg)),
+      suggestedFlats,
     };
   }
 

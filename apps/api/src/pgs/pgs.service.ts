@@ -115,7 +115,10 @@ export class PgsService {
       }),
       this.prisma.interest.findMany({
         where: { toUserId: userId },
-        include: { fromUser: { include: userInclude } },
+        include: {
+          fromUser: { include: userInclude },
+          pgListing: { select: { id: true, title: true, locality: true } },
+        },
         orderBy: { createdAt: 'desc' },
         take: 12,
       }),
@@ -136,6 +139,9 @@ export class PgsService {
           id: row.id,
           createdAt: row.createdAt.toISOString(),
           user: toPublicProfile(row.fromUser),
+          pgListing: row.pgListing
+            ? { id: row.pgListing.id, title: row.pgListing.title, locality: row.pgListing.locality }
+            : null,
           matched: !!match,
           conversationId: match?.conversation?.id ?? null,
         };

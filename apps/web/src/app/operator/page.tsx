@@ -128,6 +128,7 @@ export default function OperatorDashboardPage() {
                     <p className="font-medium">{inquiry.user.name}</p>
                     <p className="text-xs text-muted">
                       {inquiry.user.occupation || 'Seeker'} · {new Date(inquiry.createdAt).toLocaleDateString('en-IN')}
+                      {inquiry.pgListing ? ` · ${inquiry.pgListing.title}` : ''}
                       {inquiry.matched ? ' · Chat open' : ' · Waiting for your reply'}
                     </p>
                   </div>

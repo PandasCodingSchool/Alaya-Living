@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { Avatar } from '@/components/avatar';
 import { ContactReveal } from '@/components/contact-reveal';
 import { Reasons } from '@/components/reasons';
+import { ReportButton } from '@/components/report-button';
 import { SaveButton } from '@/components/save-button';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -89,6 +90,7 @@ export default function PersonPage() {
               Chat
             </Link>
           )}
+          <ReportButton targetKind="USER" targetId={person.id} />
           <button onClick={block} className="text-sm text-muted">
             Block
           </button>

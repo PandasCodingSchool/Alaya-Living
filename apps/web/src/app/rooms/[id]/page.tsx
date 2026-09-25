@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { Avatar } from '@/components/avatar';
 import { ContactReveal } from '@/components/contact-reveal';
 import { Reasons } from '@/components/reasons';
+import { ReportButton } from '@/components/report-button';
 import { SaveButton } from '@/components/save-button';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -93,6 +94,7 @@ export default function RoomPage() {
           </button>
         )}
         <SaveButton kind="ROOM" targetId={room.id} hide={mine} variant="label" />
+        {!mine && <ReportButton targetKind="ROOM" targetId={room.id} />}
       </div>
     </div>
   );

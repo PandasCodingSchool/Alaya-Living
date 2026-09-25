@@ -133,6 +133,8 @@ model User {
   flatGroupsCreated      FlatGroup[]
   flatGroupMemberships   FlatGroupMember[]
   pgListings             PgListing[]
+  flatListings           FlatListing[]
+  reportsCreated         Report[]            @relation("ReportsCreated")
 }
 
 model Profile {
@@ -279,13 +281,15 @@ model RoomAmenity {
 }
 
 model Interest {
-  id         String   @id @default(cuid())
-  fromUserId String
-  toUserId   String
-  roomId     String?
-  fromUser   User     @relation("InterestFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
-  toUser     User     @relation("InterestTo", fields: [toUserId], references: [id], onDelete: Cascade)
-  createdAt  DateTime @default(now())
+  id          String     @id @default(cuid())
+  fromUserId  String
+  toUserId    String
+  roomId      String?
+  pgListingId String?
+  pgListing   PgListing? @relation(fields: [pgListingId], references: [id], onDelete: SetNull)
+  fromUser    User       @relation("InterestFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser      User       @relation("InterestTo", fields: [toUserId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
 
   @@unique([fromUserId, toUserId])
 }
@@ -329,13 +333,44 @@ model Conversation {
   messages  Message[]
 }
 
+enum MessageType {
+  TEXT
+  IMAGE
+}
+
+enum ReportTargetKind {
+  USER
+  ROOM
+  PG
+  FLAT
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+enum FlatBhk {
+  TWO_BHK
+  THREE_BHK
+}
+
+enum FlatListingStatus {
+  ACTIVE
+  CLOSED
+}
+
 model Message {
   id             String       @id @default(cuid())
   conversationId String
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   senderId       String
   sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  body           String
+  type           MessageType  @default(TEXT)
+  body           String       @default("")
+  imageUrl       String?
   createdAt      DateTime     @default(now())
 }
 
@@ -444,6 +479,7 @@ model PgListing {
   updatedAt         DateTime         @updatedAt
   sharingOptions    PgSharingOption[]
   beds              PgBed[]
+  interests         Interest[]
 }
 
 model PgSharingOption {
@@ -470,6 +506,43 @@ model PgBed {
   sortOrder     Int           @default(0)
 
   @@unique([pgListingId, roomLabel, bedLabel])
+}
+
+model Report {
+  id         String           @id @default(cuid())
+  reporterId String
+  reporter   User             @relation("ReportsCreated", fields: [reporterId], references: [id], onDelete: Cascade)
+  targetKind ReportTargetKind
+  targetId   String
+  reason     String
+  details    String?
+  status     ReportStatus     @default(PENDING)
+  createdAt  DateTime         @default(now())
+
+  @@index([status, createdAt])
+  @@index([targetKind, targetId])
+}
+
+model FlatListing {
+  id            String            @id @default(cuid())
+  title         String
+  locality      String
+  city          String            @default("Bengaluru")
+  bhk           FlatBhk
+  monthlyRent   Int
+  deposit       Int?
+  furnished     Boolean           @default(false)
+  photos        String[]
+  amenities     String[]
+  notes         String?
+  availableFrom DateTime
+  latitude      Float?
+  longitude     Float?
+  status        FlatListingStatus @default(ACTIVE)
+  listedById    String?
+  listedBy      User?             @relation(fields: [listedById], references: [id], onDelete: SetNull)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 }
 
 model Block {
