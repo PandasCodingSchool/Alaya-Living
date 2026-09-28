@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { api } from '@/lib/api';
+import { api, apiBlob } from '@/lib/api';
 import { inr } from '@/lib/format';
 import type { Agreement } from '@/lib/types';
 
@@ -28,6 +28,20 @@ export default function AgreementPage() {
 
   async function cancel() {
     setRow(await api<Agreement>(`/agreements/${params.id}/cancel`, { method: 'POST' }));
+  }
+
+  async function confirmMoveIn() {
+    setRow(await api<Agreement>(`/agreements/${params.id}/move-in`, { method: 'POST' }));
+  }
+
+  async function downloadPdf() {
+    const blob = await apiBlob(`/agreements/${params.id}/pdf`);
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `alaya-agreement-${params.id.slice(-8)}.pdf`;
+    anchor.click();
+    URL.revokeObjectURL(url);
   }
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -113,7 +127,25 @@ export default function AgreementPage() {
         Status: <span className="font-semibold">{row.status}</span>
         {row.waitingOnMe ? ' · waiting on you' : ''}
       </p>
+      {row.status === 'CONFIRMED' && (
+        <div className="panel mt-6 p-5">
+          <h2 className="font-semibold">Move-in</h2>
+          <p className="mt-1 text-sm text-muted">
+            {row.moveInConfirmedAt
+              ? `Both acknowledged move-in on ${new Date(row.moveInConfirmedAt).toLocaleString('en-IN')}.`
+              : row.moveInWaitingOnMe
+                ? 'Confirm when you have moved in or are ready to.'
+                : 'Waiting for your roommate to acknowledge move-in.'}
+          </p>
+          {!row.moveInConfirmedAt && (
+            <button type="button" onClick={confirmMoveIn} className="btn-primary mt-4">
+              {row.moveInWaitingOnMe ? 'Acknowledge move-in' : 'Confirm move-in again'}
+            </button>
+          )}
+        </div>
+      )}
       <div className="mt-6 flex flex-wrap gap-3">
+        <button type="button" onClick={downloadPdf} className="btn-ghost">Download PDF</button>
         {row.status === 'PENDING' && !editing && (
           <>
             <button type="button" onClick={confirm} className="btn-primary">

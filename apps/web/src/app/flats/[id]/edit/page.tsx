@@ -3,6 +3,7 @@
 import { AMENITIES, LOCALITIES } from '@fmr/shared';
 import { useParams, useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useState } from 'react';
+import { PropertyVerifyButton } from '@/components/property-verify-button';
 import { api, apiUpload } from '@/lib/api';
 import type { FlatListing } from '@/lib/types';
 
@@ -57,6 +58,9 @@ export default function EditFlatPage() {
         ← Back to flat
       </button>
       <h1 className="mt-4 text-3xl font-semibold">Edit flat listing</h1>
+      <div className="mt-6">
+        <PropertyVerifyButton flatListingId={flat.id} propertyVerified={flat.propertyVerified} />
+      </div>
       <form onSubmit={onSubmit} className="mt-8 space-y-4">
         <input name="title" required defaultValue={flat.title} className="field" />
         <select name="locality" defaultValue={flat.locality} className="field">

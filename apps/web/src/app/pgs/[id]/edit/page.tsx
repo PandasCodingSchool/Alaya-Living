@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { BedInventoryForm, bedsFromListing, bedsToPayload, type BedDraft } from '@/components/pg-bed-inventory';
+import { PropertyVerifyButton } from '@/components/property-verify-button';
 import { api, apiUpload } from '@/lib/api';
 import type { PgListing } from '@/lib/types';
 
@@ -67,6 +68,9 @@ export default function EditPgPage() {
         <ArrowLeft className="h-4 w-4" /> Back to PG
       </Link>
       <h1 className="mt-4 text-3xl font-semibold">Edit PG</h1>
+      <div className="mt-6">
+        <PropertyVerifyButton pgListingId={pg.id} propertyVerified={pg.propertyVerified} />
+      </div>
       <form onSubmit={onSubmit} className="mt-8 space-y-4">
         <input name="title" required defaultValue={pg.title} className="field" />
         <select name="locality" defaultValue={pg.locality} className="field" required>

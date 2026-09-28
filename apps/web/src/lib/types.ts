@@ -116,9 +116,13 @@ export interface Agreement {
   creatorConfirmed: boolean;
   otherConfirmed: boolean;
   confirmedAt: string | null;
+  creatorMoveInAck?: boolean;
+  otherMoveInAck?: boolean;
+  moveInConfirmedAt?: string | null;
   createdAt: string;
   mine: boolean;
   waitingOnMe: boolean;
+  moveInWaitingOnMe?: boolean;
   other: Profile;
 }
 

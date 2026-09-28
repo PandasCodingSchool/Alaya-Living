@@ -1,10 +1,11 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { EmailVerificationProvider } from './email-verification.provider';
 import { LoginDto, OtpVerifyDto, RegisterDto } from './dto';
 import { OtpProvider } from './otp.provider';
 
@@ -15,6 +16,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly redis: RedisService,
     private readonly otp: OtpProvider,
+    private readonly emailVerification: EmailVerificationProvider,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -25,11 +27,12 @@ export class AuthService {
       data: {
         email: dto.email.toLowerCase(),
         passwordHash,
-        emailVerified: true,
+        emailVerified: false,
         profile: { create: { firstName: dto.firstName } },
         preferences: { create: { localities: [] } },
       },
     });
+    await this.emailVerification.send(user.id, user.email!);
     return this.issue(user);
   }
 
@@ -87,6 +90,33 @@ export class AuthService {
 
   async logout(refreshToken?: string) {
     if (refreshToken) await this.redis.client.del(`refresh:${refreshToken}`);
+  }
+
+  async requestEmailVerification(user: User) {
+    if (!user.email) throw new BadRequestException('Add an email to your account first');
+    if (user.emailVerified) return { ok: true, alreadyVerified: true };
+    return this.emailVerification.send(user.id, user.email);
+  }
+
+  async verifyEmailCode(user: User, code: string) {
+    if (user.emailVerified) return this.issue(user);
+    const ok = await this.emailVerification.verifyCode(user.id, code);
+    if (!ok) throw new UnauthorizedException('Invalid or expired verification code');
+    const updated = await this.prisma.user.update({
+      where: { id: user.id },
+      data: { emailVerified: true },
+    });
+    return this.issue(updated);
+  }
+
+  async confirmEmailToken(token: string) {
+    const userId = await this.emailVerification.verifyToken(token);
+    if (!userId) throw new UnauthorizedException('Invalid or expired verification link');
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { emailVerified: true },
+    });
+    return { ok: true, emailVerified: true, userId: user.id };
   }
 
   private async issue(user: User) {

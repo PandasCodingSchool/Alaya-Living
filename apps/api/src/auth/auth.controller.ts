@@ -4,7 +4,8 @@ import { User } from '@prisma/client';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './current-user.decorator';
-import { LoginDto, OtpRequestDto, OtpVerifyDto, RegisterDto } from './dto';
+import { EmailConfirmTokenDto, EmailVerifyCodeDto, LoginDto, OtpRequestDto, OtpVerifyDto, RegisterDto } from './dto';
+import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -57,6 +58,27 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     return this.attach(res, await this.auth.verifyOtp(dto, user));
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('email/request')
+  requestEmail(@CurrentUser() user: User) {
+    return this.auth.requestEmailVerification(user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('email/verify')
+  async verifyEmail(
+    @CurrentUser() user: User,
+    @Body() dto: EmailVerifyCodeDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    return this.attach(res, await this.auth.verifyEmailCode(user, dto.code));
+  }
+
+  @Post('email/confirm')
+  confirmEmail(@Body() dto: EmailConfirmTokenDto) {
+    return this.auth.confirmEmailToken(dto.token);
   }
 
   private attach(res: Response, tokens: Awaited<ReturnType<AuthService['login']>>) {

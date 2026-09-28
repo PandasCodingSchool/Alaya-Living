@@ -6,12 +6,13 @@ export function VerificationBadges({
   propertyVerified,
   compact = false,
 }: {
-  profile: Pick<Profile, 'phoneVerified' | 'identityVerified' | 'employmentVerified' | 'propertyVerified'>;
+  profile: Pick<Profile, 'phoneVerified' | 'emailVerified' | 'identityVerified' | 'employmentVerified' | 'propertyVerified'>;
   propertyVerified?: boolean;
   compact?: boolean;
 }) {
   const badges: string[] = [];
   if (profile.phoneVerified) badges.push('Phone');
+  if (profile.emailVerified) badges.push('Email');
   if (profile.identityVerified) badges.push('ID');
   if (profile.employmentVerified) badges.push('Work');
   if (propertyVerified || profile.propertyVerified) badges.push('Property');

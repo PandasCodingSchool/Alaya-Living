@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Res, UseGuards } from '@nestjs/common';
+import { Response } from 'express';
 import { User } from '@prisma/client';
 import { IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -118,5 +119,18 @@ export class AgreementsController {
   @Post(':id/cancel')
   cancel(@CurrentUser() user: User, @Param('id') id: string) {
     return this.agreements.cancel(user, id);
+  }
+
+  @Post(':id/move-in')
+  confirmMoveIn(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.agreements.confirmMoveIn(user, id);
+  }
+
+  @Get(':id/pdf')
+  async pdf(@CurrentUser() user: User, @Param('id') id: string, @Res() res: Response) {
+    const buffer = await this.agreements.exportPdf(user.id, id);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="alaya-agreement-${id.slice(-8)}.pdf"`);
+    res.send(buffer);
   }
 }

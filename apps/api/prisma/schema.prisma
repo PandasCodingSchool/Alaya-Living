@@ -447,6 +447,9 @@ model Agreement {
   creatorConfirmed Boolean          @default(true)
   otherConfirmed   Boolean          @default(false)
   confirmedAt      DateTime?
+  creatorMoveInAck Boolean          @default(false)
+  otherMoveInAck   Boolean          @default(false)
+  moveInConfirmedAt DateTime?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 }

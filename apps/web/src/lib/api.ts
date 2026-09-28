@@ -35,6 +35,18 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export const apiUrl = API_URL;
 
+export async function apiBlob(path: string): Promise<Blob> {
+  const headers = new Headers();
+  const token = getToken();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const res = await fetch(`${API_URL}${path}`, { headers, credentials: 'include' });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.message || `Request failed (${res.status})`);
+  }
+  return res.blob();
+}
+
 export async function apiUpload<T>(path: string, file: File, field = 'file'): Promise<T> {
   const data = new FormData();
   data.append(field, file);

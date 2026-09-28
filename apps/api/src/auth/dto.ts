@@ -40,3 +40,15 @@ export class OtpVerifyDto {
   @IsString()
   firstName?: string;
 }
+
+export class EmailVerifyCodeDto {
+  @IsString()
+  @MinLength(4)
+  code!: string;
+}
+
+export class EmailConfirmTokenDto {
+  @IsString()
+  @MinLength(16)
+  token!: string;
+}

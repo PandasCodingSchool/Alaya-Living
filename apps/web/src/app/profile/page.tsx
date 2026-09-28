@@ -75,12 +75,16 @@ export default function ProfilePage() {
           <p>Sleep: {hourLabel(user.sleepStart)} – {hourLabel(user.sleepEnd)}</p>
           <p>Food: {prettyEnum(user.foodPreference)}</p>
           <p>Phone: {user.phoneVerified ? 'Verified' : 'Not verified'}</p>
+          <p>Email: {user.emailVerified ? 'Verified' : user.email ? 'Not verified' : 'No email on file'}</p>
         </div>
         {error && <p className="mt-4 text-sm text-clay">{error}</p>}
         <div className="mt-6 flex gap-3">
           <Link href="/onboarding" className="btn-dark">Edit preferences</Link>
           {!user.phoneVerified && (
             <Link href="/verify-phone" className="btn-ghost">Verify phone</Link>
+          )}
+          {user.email && !user.emailVerified && (
+            <Link href="/verify-email" className="btn-ghost">Verify email</Link>
           )}
           <Link href="/kyc" className="btn-ghost">ID / work verification</Link>
           <Link href="/flats/mine" className="btn-ghost">My flats</Link>

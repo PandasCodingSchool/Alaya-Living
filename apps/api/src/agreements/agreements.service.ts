@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { User } from '@prisma/client';
+import { buildAgreementPdf } from './agreement-pdf';
 import { PrismaService } from '../prisma/prisma.service';
 import { toPublicProfile, userInclude } from '../users/user.mapper';
 
@@ -159,6 +160,58 @@ export class AgreementsService {
     return this.get(user.id, id);
   }
 
+  async confirmMoveIn(user: User, id: string) {
+    const row = await this.prisma.agreement.findUnique({ where: { id } });
+    if (!row) throw new NotFoundException('Agreement not found');
+    if (row.createdById !== user.id && row.counterpartyId !== user.id) throw new ForbiddenException();
+    if (row.status !== 'CONFIRMED') {
+      throw new BadRequestException('Confirm the living agreement before acknowledging move-in');
+    }
+
+    const creatorMoveInAck = row.createdById === user.id ? true : row.creatorMoveInAck;
+    const otherMoveInAck = row.counterpartyId === user.id ? true : row.otherMoveInAck;
+    const both = creatorMoveInAck && otherMoveInAck;
+
+    await this.prisma.agreement.update({
+      where: { id },
+      data: {
+        creatorMoveInAck,
+        otherMoveInAck,
+        moveInConfirmedAt: both ? row.moveInConfirmedAt ?? new Date() : null,
+      },
+    });
+    return this.get(user.id, id);
+  }
+
+  async exportPdf(userId: string, id: string) {
+    const row = await this.prisma.agreement.findUnique({
+      where: { id },
+      include: {
+        createdBy: { include: userInclude },
+        counterparty: { include: userInclude },
+      },
+    });
+    if (!row) throw new NotFoundException('Agreement not found');
+    if (row.createdById !== userId && row.counterpartyId !== userId) throw new ForbiddenException();
+
+    return buildAgreementPdf({
+      id: row.id,
+      status: row.status,
+      rentEach: row.rentEach,
+      electricity: row.electricity,
+      internet: row.internet,
+      cleaning: row.cleaning,
+      groceries: row.groceries,
+      guests: row.guests,
+      quietHours: row.quietHours,
+      notes: row.notes,
+      confirmedAt: row.confirmedAt?.toISOString() ?? null,
+      moveInConfirmedAt: row.moveInConfirmedAt?.toISOString() ?? null,
+      partyA: row.createdBy.profile?.firstName || 'Member A',
+      partyB: row.counterparty.profile?.firstName || 'Member B',
+    });
+  }
+
   private hour(value: number) {
     const hour = ((value % 24) + 24) % 24;
     const suffix = hour >= 12 ? 'PM' : 'AM';
@@ -185,6 +238,9 @@ export class AgreementsService {
       creatorConfirmed: boolean;
       otherConfirmed: boolean;
       confirmedAt: Date | null;
+      creatorMoveInAck: boolean;
+      otherMoveInAck: boolean;
+      moveInConfirmedAt: Date | null;
       createdAt: Date;
       createdBy: Parameters<typeof toPublicProfile>[0];
       counterparty: Parameters<typeof toPublicProfile>[0];
@@ -208,12 +264,20 @@ export class AgreementsService {
       creatorConfirmed: row.creatorConfirmed,
       otherConfirmed: row.otherConfirmed,
       confirmedAt: row.confirmedAt?.toISOString() ?? null,
+      creatorMoveInAck: row.creatorMoveInAck,
+      otherMoveInAck: row.otherMoveInAck,
+      moveInConfirmedAt: row.moveInConfirmedAt?.toISOString() ?? null,
       createdAt: row.createdAt.toISOString(),
       mine: row.createdById === viewerId,
       waitingOnMe:
         row.status === 'PENDING' &&
         ((row.createdById === viewerId && !row.creatorConfirmed) ||
           (row.counterpartyId === viewerId && !row.otherConfirmed)),
+      moveInWaitingOnMe:
+        row.status === 'CONFIRMED' &&
+        !row.moveInConfirmedAt &&
+        ((row.createdById === viewerId && !row.creatorMoveInAck) ||
+          (row.counterpartyId === viewerId && !row.otherMoveInAck)),
       other: toPublicProfile(other),
     };
   }
