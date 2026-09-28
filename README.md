@@ -9,6 +9,8 @@ A Bengaluru-focused shared-living platform. Someone with a spare room can find a
 - **Data:** PostgreSQL, Redis, MinIO
 - **Run:** Docker Compose
 
+**Deployment:** see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for staging/production strategy, env vars, CI/CD outline, and pre-launch checklist.
+
 ## Start everything
 
 ```bash

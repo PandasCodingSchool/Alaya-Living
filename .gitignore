@@ -1,6 +1,7 @@
 node_modules
 dist
 .next
+apps/web/.next
 .turbo
 .env
 .env.local
