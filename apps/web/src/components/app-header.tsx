@@ -11,6 +11,7 @@ import { homeForUser, isPgOperator } from '@/lib/routes';
 import { Avatar } from './avatar';
 import { LocationPicker } from './location-picker';
 import { Logo } from './logo';
+import { NotificationBell } from './notification-bell';
 
 const livingPaths = ['/living', '/pgs', '/groups', '/replacements', '/agreements'];
 
@@ -114,6 +115,7 @@ export function AppHeader() {
 
         {user ? (
           <div className="flex items-center gap-2">
+            <NotificationBell />
             {!pgOperator && (
               <Link
                 href="/saved"

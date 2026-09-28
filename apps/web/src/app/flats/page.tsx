@@ -40,8 +40,15 @@ export default function FlatsPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-5 sm:py-10">
       <p className="text-sm text-muted"><Link href="/living" className="text-clay">Living</Link></p>
-      <h1 className="mt-2 text-3xl font-semibold">Flat discovery</h1>
-      <p className="mt-2 text-sm text-muted">Browse 2BHK and 3BHK listings that fit your group&apos;s combined budget.</p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="mt-2 text-3xl font-semibold">Flat discovery</h1>
+          <p className="mt-2 text-sm text-muted">Browse 2BHK and 3BHK listings that fit your group&apos;s combined budget.</p>
+        </div>
+        <Link href="/flats/new" className="btn-primary">
+          List a flat
+        </Link>
+      </div>
 
       <div className="mt-6 flex flex-wrap gap-3">
         <select className="field w-auto min-w-[140px]" value={locality} onChange={(e) => setLocality(e.target.value)}>

@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { MessageType } from '@prisma/client';
 import { publicMediaUrl } from '../lib/media-url';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { toPublicProfile, userInclude } from '../users/user.mapper';
@@ -10,6 +11,7 @@ export class ChatService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async list(userId: string) {
@@ -90,10 +92,21 @@ export class ChatService {
       where: { id: conversation.matchId },
       data: { status: 'CHAT_STARTED' },
     });
+    const otherUserId = conversation.userAId === userId ? conversation.userBId : conversation.userAId;
+    const sender = await this.prisma.user.findUnique({ where: { id: userId }, include: userInclude });
+    const senderName = sender?.profile?.firstName || 'Someone';
+    const preview = data.type === 'IMAGE' ? 'Sent a photo' : data.body.slice(0, 120);
+    void this.notifications.create(otherUserId, {
+      type: 'MESSAGE',
+      title: `Message from ${senderName}`,
+      body: preview,
+      link: `/chat/${conversationId}`,
+    });
+
     const publicMessage = this.toPublicMessage(message);
     return {
       message: publicMessage,
-      otherUserId: conversation.userAId === userId ? conversation.userBId : conversation.userAId,
+      otherUserId,
     };
   }
 

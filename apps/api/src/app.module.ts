@@ -17,6 +17,9 @@ import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
 import { RoomsModule } from './rooms/rooms.module';
 import { HealthController } from './health.controller';
+import { NotificationsModule } from './notifications/notifications.module';
+import { ReviewsModule } from './reviews/reviews.module';
+import { SavedSearchesModule } from './saved-searches/saved-searches.module';
 import { SafetyModule } from './safety/safety.module';
 import { StorageModule } from './storage/storage.module';
 import { UsersModule } from './users/users.module';
@@ -28,6 +31,7 @@ import { UsersModule } from './users/users.module';
     RedisModule,
     StorageModule,
     EmailModule,
+    NotificationsModule,
     AuthModule,
     AdminModule,
     UsersModule,
@@ -43,6 +47,8 @@ import { UsersModule } from './users/users.module';
     MembershipModule,
     ChatModule,
     SafetyModule,
+    SavedSearchesModule,
+    ReviewsModule,
   ],
   controllers: [HealthController],
 })

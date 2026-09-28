@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { BedDouble, MapPin, Sofa } from 'lucide-react';
+import { SaveButton } from '@/components/save-button';
 import type { FlatListing } from '@/lib/types';
 import { inr } from '@/lib/format';
 import { roomPhotoFor } from '@/lib/media';
@@ -10,8 +11,11 @@ export function FlatCard({ flat, groupSize }: { flat: FlatListing; groupSize?: n
 
   return (
     <article className="panel overflow-hidden">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={roomPhotoFor(flat.locality, flat.photos)} alt={flat.title} className="h-40 w-full object-cover" />
+      <div className="relative">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={roomPhotoFor(flat.locality, flat.photos)} alt={flat.title} className="h-40 w-full object-cover" />
+        <SaveButton kind="FLAT" targetId={flat.id} className="absolute right-3 top-3" />
+      </div>
       <div className="p-5">
         <p className="text-lg font-semibold">{flat.title}</p>
         <p className="mt-1 text-xl font-semibold">{inr(flat.monthlyRent)}<span className="text-sm font-normal text-muted"> / month</span></p>

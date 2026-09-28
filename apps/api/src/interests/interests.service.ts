@@ -2,6 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { MatchReasonKind } from '@prisma/client';
 import { EmailService } from '../email/email.service';
 import { MatchingService } from '../matching/matching.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { toPublicProfile, userInclude } from '../users/user.mapper';
 
@@ -11,6 +12,7 @@ export class InterestsService {
     private readonly prisma: PrismaService,
     private readonly matching: MatchingService,
     private readonly email: EmailService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async express(fromUserId: string, toUserId: string, roomId?: string, pgListingId?: string) {
@@ -39,6 +41,7 @@ export class InterestsService {
       }
     } else {
       await this.prisma.interest.create({ data: { fromUserId, toUserId, roomId, pgListingId } });
+      void this.notifyInterestReceived(fromUserId, toUserId);
     }
     if (isNewPgInquiry && pgListingId) {
       void this.notifyPgInquiry(fromUserId, toUserId, pgListingId);
@@ -134,10 +137,48 @@ export class InterestsService {
       `New inquiry on ${pg.title}`,
       `${seekerName} messaged you about "${pg.title}" in ${pg.locality}.\n\nView leads: ${webOrigin}/operator`,
     );
+    void this.notifications.create(toUserId, {
+      type: 'PG_INQUIRY',
+      title: `Inquiry on ${pg.title}`,
+      body: `${seekerName} is interested in your PG in ${pg.locality}.`,
+      link: '/operator',
+    });
   }
 
-  private async createMatch(userId1: string, userId2: string) {
-    const [a, b] = userId1 < userId2 ? [userId1, userId2] : [userId2, userId1];
+  private async notifyInterestReceived(fromUserId: string, toUserId: string) {
+    const seeker = await this.prisma.user.findUnique({ where: { id: fromUserId }, include: userInclude });
+    const name = seeker ? toPublicProfile(seeker).name : 'Someone';
+    void this.notifications.create(toUserId, {
+      type: 'INTEREST_RECEIVED',
+      title: 'New interest',
+      body: `${name} is interested in connecting with you.`,
+      link: '/matches',
+    });
+  }
+
+  private async notifyMatch(userId1: string, userId2: string, conversationId: string) {
+    const [userA, userB] = await Promise.all([
+      this.prisma.user.findUnique({ where: { id: userId1 }, include: userInclude }),
+      this.prisma.user.findUnique({ where: { id: userId2 }, include: userInclude }),
+    ]);
+    const nameA = userA ? toPublicProfile(userA).name : 'Someone';
+    const nameB = userB ? toPublicProfile(userB).name : 'Someone';
+    void this.notifications.create(userId1, {
+      type: 'MATCH',
+      title: "It's a match!",
+      body: `You and ${nameB} matched. Start chatting.`,
+      link: `/chat/${conversationId}`,
+    });
+    void this.notifications.create(userId2, {
+      type: 'MATCH',
+      title: "It's a match!",
+      body: `You and ${nameA} matched. Start chatting.`,
+      link: `/chat/${conversationId}`,
+    });
+  }
+
+  private async createMatch(fromUserId: string, toUserId: string) {
+    const [a, b] = fromUserId < toUserId ? [fromUserId, toUserId] : [toUserId, fromUserId];
     const existing = await this.prisma.match.findUnique({
       where: { userAId_userBId: { userAId: a, userBId: b } },
     });
@@ -164,6 +205,9 @@ export class InterestsService {
       },
       include: { conversation: true },
     });
+    if (match.conversation?.id) {
+      void this.notifyMatch(fromUserId, toUserId, match.conversation.id);
+    }
     return match;
   }
 }

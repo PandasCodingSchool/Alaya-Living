@@ -1,9 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { FlatBhk } from '@prisma/client';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { FlatBhk, User } from '@prisma/client';
 import { coordsForLocality } from '../lib/geo';
 import { publicMediaUrl } from '../lib/media-url';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 import { toPublicProfile, userInclude } from '../users/user.mapper';
+import { CreateFlatDto, UpdateFlatDto } from './dto';
 
 const flatInclude = {
   listedBy: { include: userInclude },
@@ -11,7 +13,10 @@ const flatInclude = {
 
 @Injectable()
 export class FlatsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+  ) {}
 
   async list(query: { locality?: string; bhk?: FlatBhk; maxRent?: number; minRent?: number }) {
     const rows = await this.prisma.flatListing.findMany({
@@ -30,6 +35,15 @@ export class FlatsService {
     return rows.map((row) => this.toPublic(row));
   }
 
+  async mine(user: User) {
+    const rows = await this.prisma.flatListing.findMany({
+      where: { listedById: user.id },
+      include: flatInclude,
+      orderBy: { createdAt: 'desc' },
+    });
+    return rows.map((row) => this.toPublic(row));
+  }
+
   async get(id: string) {
     const row = await this.prisma.flatListing.findUnique({
       where: { id },
@@ -37,6 +51,67 @@ export class FlatsService {
     });
     if (!row) throw new NotFoundException('Flat not found');
     return this.toPublic(row);
+  }
+
+  async create(user: User, dto: CreateFlatDto) {
+    const pin = coordsForLocality(dto.locality);
+    const row = await this.prisma.flatListing.create({
+      data: {
+        title: dto.title,
+        locality: dto.locality,
+        city: dto.city || 'Bengaluru',
+        bhk: dto.bhk,
+        monthlyRent: dto.monthlyRent,
+        deposit: dto.deposit,
+        furnished: dto.furnished ?? false,
+        amenities: dto.amenities,
+        notes: dto.notes,
+        availableFrom: new Date(dto.availableFrom),
+        listedById: user.id,
+        latitude: pin?.lat,
+        longitude: pin?.lng,
+      },
+      include: flatInclude,
+    });
+    return this.toPublic(row);
+  }
+
+  async update(user: User, id: string, dto: UpdateFlatDto) {
+    const row = await this.requireOwner(user, id);
+    const pin = dto.locality ? coordsForLocality(dto.locality) : null;
+    const updated = await this.prisma.flatListing.update({
+      where: { id: row.id },
+      data: {
+        ...(dto.title ? { title: dto.title } : {}),
+        ...(dto.locality ? { locality: dto.locality, latitude: pin?.lat, longitude: pin?.lng } : {}),
+        ...(dto.bhk ? { bhk: dto.bhk } : {}),
+        ...(dto.monthlyRent != null ? { monthlyRent: dto.monthlyRent } : {}),
+        ...(dto.deposit != null ? { deposit: dto.deposit } : {}),
+        ...(dto.furnished != null ? { furnished: dto.furnished } : {}),
+        ...(dto.amenities ? { amenities: dto.amenities } : {}),
+        ...(dto.notes !== undefined ? { notes: dto.notes } : {}),
+        ...(dto.availableFrom ? { availableFrom: new Date(dto.availableFrom) } : {}),
+      },
+      include: flatInclude,
+    });
+    return this.toPublic(updated);
+  }
+
+  async close(user: User, id: string) {
+    const row = await this.requireOwner(user, id);
+    await this.prisma.flatListing.update({ where: { id: row.id }, data: { status: 'CLOSED' } });
+    return { ok: true };
+  }
+
+  async addPhoto(user: User, id: string, file: Express.Multer.File) {
+    const row = await this.requireOwner(user, id);
+    const url = await this.storage.upload(file, 'flats');
+    const updated = await this.prisma.flatListing.update({
+      where: { id: row.id },
+      data: { photos: { push: url } },
+      include: flatInclude,
+    });
+    return this.toPublic(updated);
   }
 
   async forGroup(localities: string[], combinedBudget: number, targetSize: number) {
@@ -53,6 +128,15 @@ export class FlatsService {
       orderBy: { monthlyRent: 'asc' },
     });
     return rows.map((row) => this.toPublic(row));
+  }
+
+  private async requireOwner(user: User, id: string) {
+    const row = await this.prisma.flatListing.findUnique({ where: { id } });
+    if (!row) throw new NotFoundException('Flat not found');
+    if (row.listedById !== user.id && user.role !== 'ADMIN') {
+      throw new ForbiddenException('Not your listing');
+    }
+    return row;
   }
 
   private toPublic(row: {

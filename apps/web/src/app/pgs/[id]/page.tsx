@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Avatar } from '@/components/avatar';
 import { ReportButton } from '@/components/report-button';
+import { ReviewSection } from '@/components/review-section';
 import {
   BedInventoryTable,
   BedQuickToggle,
@@ -168,6 +169,7 @@ export default function PgDetailPage() {
           </>
         )}
       </div>
+      <ReviewSection targetKind="PG" targetId={pg.id} />
     </div>
   );
 }

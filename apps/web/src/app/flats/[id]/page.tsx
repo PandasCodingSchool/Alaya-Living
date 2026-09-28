@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ReportButton } from '@/components/report-button';
+import { ReviewSection } from '@/components/review-section';
 import { api } from '@/lib/api';
 import { inr } from '@/lib/format';
 import { roomPhotoFor } from '@/lib/media';
@@ -48,6 +49,7 @@ export default function FlatDetailPage() {
         <Link href="/groups" className="btn-primary">Find flatmates for this</Link>
         <ReportButton targetKind="FLAT" targetId={flat.id} />
       </div>
+      <ReviewSection targetKind="FLAT" targetId={flat.id} />
     </div>
   );
 }

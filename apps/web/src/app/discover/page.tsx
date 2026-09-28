@@ -48,6 +48,7 @@ function DiscoverInner() {
   const [radiusKm, setRadiusKm] = useState(5);
   const [draftRadius, setDraftRadius] = useState(5);
   const [origin, setOrigin] = useState<'office' | 'home'>('office');
+  const [saveMessage, setSaveMessage] = useState('');
 
   useEffect(() => {
     if (user?.preferredRadiusKm != null) {
@@ -187,6 +188,25 @@ function DiscoverInner() {
     setDraftRadius(next);
   }
 
+  async function saveSearch() {
+    const kindMap = { people: 'PEOPLE', rooms: 'ROOMS', pgs: 'PGS', flats: 'FLATS' } as const;
+    const name = window.prompt('Name this search', `${tab} search`);
+    if (!name?.trim()) return;
+    try {
+      await api('/saved-searches', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: name.trim(),
+          kind: kindMap[tab],
+          filters: { ...filters, radiusKm, origin, q: query },
+        }),
+      });
+      setSaveMessage('Search saved — find it under Saved → Searches.');
+    } catch (err) {
+      setSaveMessage(err instanceof Error ? err.message : 'Could not save search');
+    }
+  }
+
   const filterForm = (
     <div className="space-y-5">
       <div>
@@ -315,6 +335,9 @@ function DiscoverInner() {
       <button type="button" className="text-xs font-medium text-clay" onClick={() => setFilters(emptyFilters)}>
         Clear filters
       </button>
+      <button type="button" className="btn-ghost mt-2 w-full text-xs" onClick={() => void saveSearch()}>
+        Save this search
+      </button>
     </div>
   );
 
@@ -398,6 +421,7 @@ function DiscoverInner() {
         )}
 
         {error && <p className="mt-6 text-orange-700">{error}</p>}
+        {saveMessage && <p className="mt-4 text-sm text-muted">{saveMessage}</p>}
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           {tab === 'people' && visiblePeople.map((person) => <MatchCard key={person.id} person={person} />)}
           {tab === 'rooms' && visibleRooms.map((room) => <RoomCard key={room.id} room={room} />)}

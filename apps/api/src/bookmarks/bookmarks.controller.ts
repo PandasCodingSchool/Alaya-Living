@@ -29,6 +29,8 @@ export class BookmarksController {
     return {
       people: rows.filter((row) => row.kind === BookmarkKind.PERSON).map((row) => row.targetId),
       rooms: rows.filter((row) => row.kind === BookmarkKind.ROOM).map((row) => row.targetId),
+      pgs: rows.filter((row) => row.kind === BookmarkKind.PG).map((row) => row.targetId),
+      flats: rows.filter((row) => row.kind === BookmarkKind.FLAT).map((row) => row.targetId),
     };
   }
 

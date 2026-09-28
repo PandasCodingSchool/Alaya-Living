@@ -3,6 +3,7 @@ import { Poppins } from 'next/font/google';
 import { AuthProvider } from '@/lib/auth';
 import { BookmarkProvider } from '@/lib/bookmarks';
 import { InboxProvider } from '@/lib/inbox';
+import { NotificationProvider } from '@/lib/notifications';
 import { absoluteUrl, DEFAULT_DESCRIPTION, DEFAULT_TITLE, SITE_NAME, siteUrl } from '@/lib/seo';
 import { JsonLd, organizationJsonLd, softwareJsonLd, websiteJsonLd } from '@/components/json-ld';
 import { Shell } from '@/components/shell';
@@ -74,9 +75,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <JsonLd data={[organizationJsonLd(url), websiteJsonLd(url), softwareJsonLd(url)]} />
         <AuthProvider>
           <InboxProvider>
-            <BookmarkProvider>
-              <Shell>{children}</Shell>
-            </BookmarkProvider>
+            <NotificationProvider>
+              <BookmarkProvider>
+                <Shell>{children}</Shell>
+              </BookmarkProvider>
+            </NotificationProvider>
           </InboxProvider>
         </AuthProvider>
       </body>

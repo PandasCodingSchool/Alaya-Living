@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { BadgeCheck, BedDouble, MapPin, Utensils } from 'lucide-react';
+import { SaveButton } from '@/components/save-button';
 import { bedInventorySummary } from '@/components/pg-bed-inventory';
 import type { PgListing } from '@/lib/types';
 import { prettyEnum } from '@/lib/format';
@@ -8,8 +9,11 @@ import { roomPhotoFor } from '@/lib/media';
 export function PgCard({ pg }: { pg: PgListing }) {
   return (
     <article className="panel overflow-hidden">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={roomPhotoFor(pg.locality, pg.photos)} alt={pg.title} className="h-40 w-full object-cover" />
+      <div className="relative">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={roomPhotoFor(pg.locality, pg.photos)} alt={pg.title} className="h-40 w-full object-cover" />
+        <SaveButton kind="PG" targetId={pg.id} className="absolute right-3 top-3" />
+      </div>
       <div className="p-5">
         <div className="flex items-start justify-between gap-2">
           <p className="text-lg font-semibold">{pg.title}</p>
