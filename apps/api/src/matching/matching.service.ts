@@ -18,6 +18,7 @@ import {
   scoreRoom,
 } from '../lib/matching';
 import { Preference, Profile, User, UserLanguage } from '@prisma/client';
+import { GeoService } from '../geo/geo.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { toPublicRoom } from '../rooms/rooms.service';
 import { toPublicProfile, userInclude } from '../users/user.mapper';
@@ -59,7 +60,10 @@ export interface GeoQuery {
 
 @Injectable()
 export class MatchingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly geo: GeoService,
+  ) {}
 
   async people(viewerId: string, query: GeoQuery = {}) {
     const viewer = await this.requireUser(viewerId);
@@ -117,7 +121,14 @@ export class MatchingService {
 
     const viewerM = toMatchable(viewer);
     const { radiusKm, origin, from } = this.geoContext(viewer, query);
+    const nearbyAccommodationIds =
+      from && radiusKm != null && radiusKm > 0
+        ? await this.geo.accommodationIdsWithinRadius(from, radiusKm)
+        : null;
     return rooms
+      .filter((room) =>
+        nearbyAccommodationIds ? nearbyAccommodationIds.includes(room.accommodationId) : true,
+      )
       .map((room) => {
         const owner = toMatchable(room.accommodation.owner);
         const matchableRoom = {

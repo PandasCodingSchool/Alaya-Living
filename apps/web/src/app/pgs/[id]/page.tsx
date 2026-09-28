@@ -3,7 +3,10 @@
 import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { AddressReveal } from '@/components/address-reveal';
 import { Avatar } from '@/components/avatar';
+import { ContactReveal } from '@/components/contact-reveal';
+import { VerificationBadges } from '@/components/verification-badges';
 import { ReportButton } from '@/components/report-button';
 import { ReviewSection } from '@/components/review-section';
 import {
@@ -119,8 +122,9 @@ export default function PgDetailPage() {
         </p>
       )}
       <p className="mt-4 text-sm text-ink/70">
-        Sharing permission: {prettyEnum(pg.sharingPermission)}. Exact address is hidden until you match with the operator.
+        Sharing permission: {prettyEnum(pg.sharingPermission)}.
       </p>
+      <AddressReveal endpoint={`/pgs/${pg.id}/address`} matched={!!state?.matched} ownerView={mine} />
       <div className="mt-4 flex flex-wrap gap-2">
         {pg.amenities.map((amenity) => (
           <span key={amenity} className="chip">{amenity}</span>
@@ -152,9 +156,12 @@ export default function PgDetailPage() {
             <p className="text-sm text-muted">Listed by</p>
             <p className="text-lg font-semibold">{pg.owner.name}</p>
             <Link href={`/people/${pg.owner.id}`} className="text-sm text-clay">View profile</Link>
+            <VerificationBadges profile={pg.owner} propertyVerified={pg.propertyVerified} compact />
           </div>
         </div>
       )}
+
+      {!mine && <ContactReveal userId={pg.owner.id} matched={!!state?.matched} />}
 
       <div className="mt-8 flex flex-wrap gap-3">
         {mine ? (

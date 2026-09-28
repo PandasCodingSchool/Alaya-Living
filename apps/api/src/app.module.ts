@@ -6,6 +6,9 @@ import { EmailModule } from './email/email.module';
 import { AuthModule } from './auth/auth.module';
 import { BookmarksModule } from './bookmarks/bookmarks.module';
 import { FlatsModule } from './flats/flats.module';
+import { GeoModule } from './geo/geo.module';
+import { KycModule } from './kyc/kyc.module';
+import { PrivacyModule } from './privacy/privacy.module';
 import { GroupsModule } from './groups/groups.module';
 import { PgsModule } from './pgs/pgs.module';
 import { ReplacementsModule } from './replacements/replacements.module';
@@ -29,6 +32,7 @@ import { UsersModule } from './users/users.module';
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
     RedisModule,
+    GeoModule,
     StorageModule,
     EmailModule,
     NotificationsModule,
@@ -49,6 +53,8 @@ import { UsersModule } from './users/users.module';
     SafetyModule,
     SavedSearchesModule,
     ReviewsModule,
+    PrivacyModule,
+    KycModule,
   ],
   controllers: [HealthController],
 })

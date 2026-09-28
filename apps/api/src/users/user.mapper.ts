@@ -1,11 +1,16 @@
-import { Preference, Profile, User, UserLanguage } from '@prisma/client';
+import { Preference, Profile, User, UserLanguage, VerificationKind } from '@prisma/client';
 import { publicMediaUrl } from '../lib/media-url';
 
 type FullUser = User & {
   profile: Profile | null;
   preferences: Preference | null;
   languages: UserLanguage[];
+  verifications?: { kind: VerificationKind }[];
 };
+
+function hasApprovedVerification(user: FullUser, kind: VerificationKind) {
+  return user.verifications?.some((row) => row.kind === kind) ?? false;
+}
 
 export function profileCompletion(user: FullUser) {
   const checks = [
@@ -42,6 +47,9 @@ export function toPublicProfile(user: FullUser) {
     intent: user.profile?.intent ?? null,
     phoneVerified: user.phoneVerified,
     emailVerified: user.emailVerified,
+    identityVerified: hasApprovedVerification(user, 'IDENTITY'),
+    employmentVerified: hasApprovedVerification(user, 'EMPLOYMENT'),
+    propertyVerified: hasApprovedVerification(user, 'PROPERTY'),
     completion: profileCompletion(user),
     localities: user.preferences?.localities ?? [],
     languages: user.languages.map((l) => l.language),
@@ -79,4 +87,5 @@ export const userInclude = {
   profile: true,
   preferences: true,
   languages: true,
+  verifications: { where: { status: 'APPROVED' }, select: { kind: true } },
 } as const;

@@ -108,6 +108,19 @@ enum NotificationType {
   MATCH
   MESSAGE
   PG_INQUIRY
+  SAVED_SEARCH_MATCH
+}
+
+enum VerificationKind {
+  IDENTITY
+  EMPLOYMENT
+  PROPERTY
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum SavedSearchKind {
@@ -162,6 +175,7 @@ model User {
   notifications          Notification[]
   savedSearches          SavedSearch[]
   reviewsWritten         Review[]            @relation("ReviewsWritten")
+  verifications          Verification[]
 }
 
 model Profile {
@@ -507,6 +521,7 @@ model PgListing {
   sharingOptions    PgSharingOption[]
   beds              PgBed[]
   interests         Interest[]
+  verifications     Verification[]
 }
 
 model PgSharingOption {
@@ -568,8 +583,30 @@ model FlatListing {
   status        FlatListingStatus @default(ACTIVE)
   listedById    String?
   listedBy      User?             @relation(fields: [listedById], references: [id], onDelete: SetNull)
+  exactAddress  String?
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
+  verifications Verification[]
+}
+
+model Verification {
+  id            String             @id @default(cuid())
+  userId        String
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind          VerificationKind
+  status        VerificationStatus @default(PENDING)
+  pgListingId   String?
+  pgListing     PgListing?         @relation(fields: [pgListingId], references: [id], onDelete: SetNull)
+  flatListingId String?
+  flatListing   FlatListing?       @relation(fields: [flatListingId], references: [id], onDelete: SetNull)
+  documentRef   String?
+  notes         String?
+  adminNotes    String?
+  createdAt     DateTime           @default(now())
+  reviewedAt    DateTime?
+
+  @@index([status, createdAt])
+  @@index([userId, kind])
 }
 
 model Notification {

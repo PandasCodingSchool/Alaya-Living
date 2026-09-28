@@ -28,6 +28,7 @@ export default function NewFlatPage() {
           availableFrom: data.get('availableFrom'),
           amenities,
           notes: data.get('notes'),
+          exactAddress: data.get('exactAddress'),
         }),
       });
       for (const photo of photos) {
@@ -52,6 +53,7 @@ export default function NewFlatPage() {
         <select name="locality" className="field">
           {LOCALITIES.map((locality) => <option key={locality}>{locality}</option>)}
         </select>
+        <input name="exactAddress" placeholder="Exact address (private until match)" className="field" />
         <select name="bhk" className="field">
           <option value="TWO_BHK">2 BHK</option>
           <option value="THREE_BHK">3 BHK</option>

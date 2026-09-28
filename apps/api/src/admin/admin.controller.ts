@@ -66,6 +66,15 @@ class GrantPremiumDto {
   planId?: string;
 }
 
+class ReviewVerificationDto {
+  @IsBoolean()
+  approve!: boolean;
+
+  @IsOptional()
+  @IsString()
+  adminNotes?: string;
+}
+
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN)
@@ -164,5 +173,15 @@ export class AdminController {
   @Post('listings/close')
   closeListing(@Body() dto: CloseListingDto) {
     return this.admin.closeListing(dto.kind, dto.targetId);
+  }
+
+  @Get('verifications')
+  verifications() {
+    return this.admin.listVerifications();
+  }
+
+  @Patch('verifications/:id')
+  reviewVerification(@Param('id') id: string, @Body() dto: ReviewVerificationDto) {
+    return this.admin.reviewVerification(id, dto.approve, dto.adminNotes);
   }
 }

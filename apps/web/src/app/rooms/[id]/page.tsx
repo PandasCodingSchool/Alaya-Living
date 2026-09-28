@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Avatar } from '@/components/avatar';
+import { AddressReveal } from '@/components/address-reveal';
 import { ContactReveal } from '@/components/contact-reveal';
+import { VerificationBadges } from '@/components/verification-badges';
 import { Reasons } from '@/components/reasons';
 import { ReportButton } from '@/components/report-button';
 import { SaveButton } from '@/components/save-button';
@@ -63,8 +65,9 @@ export default function RoomPage() {
         Full rent {inr(room.monthlyRent)} · {prettyEnum(room.roomType)} · {prettyEnum(room.propertyType)}
       </p>
       <p className="mt-6 text-sm text-ink/70">
-        Exact address is hidden until you match. Sharing permission: {prettyEnum(room.sharingPermission)}.
+        Sharing permission: {prettyEnum(room.sharingPermission)}.
       </p>
+      <AddressReveal endpoint={`/rooms/${room.id}/address`} matched={!!state?.matched} ownerView={mine} />
       <div className="mt-4 flex flex-wrap gap-2">
         {room.amenities.map((amenity) => (
           <span key={amenity} className="chip">{amenity}</span>
@@ -79,6 +82,7 @@ export default function RoomPage() {
         <p className="mt-1 text-xl font-semibold">{room.owner.name}</p>
         <p className="text-sm text-ink/60">{room.owner.occupation}</p>
         <Link href={`/people/${room.owner.id}`} className="mt-1 inline-block text-sm text-clay">View living profile</Link>
+        <VerificationBadges profile={room.owner} compact />
         </div>
       </div>
       {!mine && <ContactReveal userId={room.owner.id} matched={!!state?.matched} />}

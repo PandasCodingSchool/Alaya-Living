@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { BadgeCheck, BedDouble, MapPin, Utensils } from 'lucide-react';
+import { BedDouble, MapPin, Utensils } from 'lucide-react';
+import { VerificationBadges } from '@/components/verification-badges';
 import { SaveButton } from '@/components/save-button';
 import { bedInventorySummary } from '@/components/pg-bed-inventory';
 import type { PgListing } from '@/lib/types';
@@ -52,11 +53,7 @@ export function PgCard({ pg }: { pg: PgListing }) {
             <span key={amenity} className="chip">{amenity}</span>
           ))}
         </div>
-        {pg.owner.phoneVerified && (
-          <p className="mt-3 flex items-center gap-1 text-[11px] font-semibold text-forest">
-            <BadgeCheck className="h-3.5 w-3.5" /> Operator verified
-          </p>
-        )}
+        <VerificationBadges profile={pg.owner} propertyVerified={pg.propertyVerified} compact />
         <Link href={`/pgs/${pg.id}`} className="btn-ghost mt-5 w-full">
           View PG
         </Link>

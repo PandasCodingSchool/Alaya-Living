@@ -1,14 +1,18 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { FlatBhk, User } from '@prisma/client';
+import { GeoService } from '../geo/geo.service';
+import { resolveCoordinates } from '../lib/geocode';
 import { coordsForLocality } from '../lib/geo';
 import { publicMediaUrl } from '../lib/media-url';
 import { PrismaService } from '../prisma/prisma.service';
+import { SavedSearchAlertsService } from '../saved-searches/saved-search-alerts.service';
 import { StorageService } from '../storage/storage.service';
 import { toPublicProfile, userInclude } from '../users/user.mapper';
 import { CreateFlatDto, UpdateFlatDto } from './dto';
 
 const flatInclude = {
   listedBy: { include: userInclude },
+  verifications: { where: { status: 'APPROVED', kind: 'PROPERTY' }, take: 1, select: { id: true } },
 } as const;
 
 @Injectable()
@@ -16,6 +20,8 @@ export class FlatsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
+    private readonly geo: GeoService,
+    private readonly savedSearchAlerts: SavedSearchAlertsService,
   ) {}
 
   async list(query: { locality?: string; bhk?: FlatBhk; maxRent?: number; minRent?: number }) {
@@ -54,12 +60,17 @@ export class FlatsService {
   }
 
   async create(user: User, dto: CreateFlatDto) {
-    const pin = coordsForLocality(dto.locality);
+    const city = dto.city || 'Bengaluru';
+    const pin = await resolveCoordinates({
+      exactAddress: dto.exactAddress,
+      locality: dto.locality,
+      city,
+    });
     const row = await this.prisma.flatListing.create({
       data: {
         title: dto.title,
         locality: dto.locality,
-        city: dto.city || 'Bengaluru',
+        city,
         bhk: dto.bhk,
         monthlyRent: dto.monthlyRent,
         deposit: dto.deposit,
@@ -67,23 +78,40 @@ export class FlatsService {
         amenities: dto.amenities,
         notes: dto.notes,
         availableFrom: new Date(dto.availableFrom),
+        exactAddress: dto.exactAddress,
         listedById: user.id,
         latitude: pin?.lat,
         longitude: pin?.lng,
       },
       include: flatInclude,
     });
+    await this.geo.syncLocation('FlatListing', row.id, pin?.lat ?? null, pin?.lng ?? null);
+    void this.savedSearchAlerts.notifyFlatCreated({
+      id: row.id,
+      title: row.title,
+      locality: row.locality,
+      monthlyRent: row.monthlyRent,
+      bhk: row.bhk,
+      notes: row.notes,
+      listedById: row.listedById,
+    });
     return this.toPublic(row);
   }
 
   async update(user: User, id: string, dto: UpdateFlatDto) {
     const row = await this.requireOwner(user, id);
-    const pin = dto.locality ? coordsForLocality(dto.locality) : null;
+    const pin = await resolveCoordinates({
+      exactAddress: dto.exactAddress ?? row.exactAddress,
+      locality: dto.locality ?? row.locality,
+      city: row.city,
+    });
     const updated = await this.prisma.flatListing.update({
       where: { id: row.id },
       data: {
         ...(dto.title ? { title: dto.title } : {}),
-        ...(dto.locality ? { locality: dto.locality, latitude: pin?.lat, longitude: pin?.lng } : {}),
+        ...(dto.locality ? { locality: dto.locality } : {}),
+        ...(dto.exactAddress !== undefined ? { exactAddress: dto.exactAddress } : {}),
+        ...(pin ? { latitude: pin.lat, longitude: pin.lng } : {}),
         ...(dto.bhk ? { bhk: dto.bhk } : {}),
         ...(dto.monthlyRent != null ? { monthlyRent: dto.monthlyRent } : {}),
         ...(dto.deposit != null ? { deposit: dto.deposit } : {}),
@@ -94,6 +122,7 @@ export class FlatsService {
       },
       include: flatInclude,
     });
+    await this.geo.syncLocation('FlatListing', updated.id, updated.latitude, updated.longitude);
     return this.toPublic(updated);
   }
 
@@ -156,6 +185,7 @@ export class FlatsService {
     longitude: number | null;
     status: string;
     listedBy: Parameters<typeof toPublicProfile>[0] | null;
+    verifications?: { id: string }[];
   }) {
     const pin = row.latitude == null ? coordsForLocality(row.locality) : null;
     return {
@@ -174,6 +204,7 @@ export class FlatsService {
       latitude: row.latitude ?? pin?.lat ?? null,
       longitude: row.longitude ?? pin?.lng ?? null,
       status: row.status,
+      propertyVerified: (row.verifications?.length ?? 0) > 0,
       listedBy: row.listedBy ? toPublicProfile(row.listedBy) : null,
     };
   }

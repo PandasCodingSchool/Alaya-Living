@@ -12,6 +12,7 @@ const links = [
   { href: '/admin/pg-owners', label: 'PG owners' },
   { href: '/admin/revenue', label: 'Revenue' },
   { href: '/admin/reports', label: 'Reports' },
+  { href: '/admin/verifications', label: 'Verifications' },
 ];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {

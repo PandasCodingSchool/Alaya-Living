@@ -19,6 +19,7 @@ const pgInclude = {
   owner: { include: userInclude },
   sharingOptions: true,
   beds: { orderBy: [{ sortOrder: 'asc' as const }, { roomLabel: 'asc' as const }, { bedLabel: 'asc' as const }] },
+  verifications: { where: { status: 'APPROVED' as const, kind: 'PROPERTY' as const }, take: 1, select: { id: true } },
 };
 
 @Injectable()

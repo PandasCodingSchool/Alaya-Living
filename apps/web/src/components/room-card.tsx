@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { BadgeCheck, Calendar, MapPin } from 'lucide-react';
+import { Calendar, MapPin } from 'lucide-react';
+import { VerificationBadges } from '@/components/verification-badges';
 import { useAuth } from '@/lib/auth';
 import type { Room } from '@/lib/types';
 import { inr, prettyEnum } from '@/lib/format';
@@ -42,11 +43,7 @@ export function RoomCard({ room }: { room: Room }) {
             <span key={amenity} className="chip">{amenity}</span>
           ))}
         </div>
-        {room.owner.phoneVerified && (
-          <p className="mt-3 flex items-center gap-1 text-[11px] font-semibold text-forest">
-            <BadgeCheck className="h-3.5 w-3.5" /> Occupant verified
-          </p>
-        )}
+        <VerificationBadges profile={room.owner} compact />
         {room.compatibility && <Reasons reasons={room.compatibility.reasons} />}
         <Link href={`/rooms/${room.id}`} className="btn-ghost mt-5 w-full">
           View room

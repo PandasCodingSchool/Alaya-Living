@@ -42,6 +42,10 @@ export class CreateFlatDto {
 
   @IsDateString()
   availableFrom!: string;
+
+  @IsOptional()
+  @IsString()
+  exactAddress?: string;
 }
 
 export class UpdateFlatDto {
@@ -86,4 +90,8 @@ export class UpdateFlatDto {
   @IsOptional()
   @IsDateString()
   availableFrom?: string;
+
+  @IsOptional()
+  @IsString()
+  exactAddress?: string;
 }

@@ -82,6 +82,8 @@ export default function ProfilePage() {
           {!user.phoneVerified && (
             <Link href="/verify-phone" className="btn-ghost">Verify phone</Link>
           )}
+          <Link href="/kyc" className="btn-ghost">ID / work verification</Link>
+          <Link href="/flats/mine" className="btn-ghost">My flats</Link>
         </div>
       </div>
     </div>

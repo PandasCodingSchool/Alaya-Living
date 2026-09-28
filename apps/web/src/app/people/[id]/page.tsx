@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Avatar } from '@/components/avatar';
 import { ContactReveal } from '@/components/contact-reveal';
+import { VerificationBadges } from '@/components/verification-badges';
 import { Reasons } from '@/components/reasons';
 import { ReportButton } from '@/components/report-button';
 import { SaveButton } from '@/components/save-button';
@@ -77,7 +78,7 @@ export default function PersonPage() {
           <p>Food: {prettyEnum(person.foodPreference)}</p>
           <p>Smoking: {prettyEnum(person.smokingPreference)}</p>
         </div>
-        {person.phoneVerified && <p className="mt-4 font-mono text-[11px] font-medium text-forest">PHONE VERIFIED</p>}
+        <VerificationBadges profile={person} />
         <ContactReveal userId={person.id} matched={!!state?.matched} />
         {person.compatibility && <Reasons reasons={person.compatibility.reasons} />}
         <div className="mt-6 flex flex-wrap gap-3">

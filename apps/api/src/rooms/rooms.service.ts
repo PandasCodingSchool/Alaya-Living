@@ -1,8 +1,10 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { User } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import { coordsForLocality } from '../lib/geo';
+import { GeoService } from '../geo/geo.service';
+import { resolveCoordinates } from '../lib/geocode';
 import { publicMediaUrl } from '../lib/media-url';
+import { PrismaService } from '../prisma/prisma.service';
+import { SavedSearchAlertsService } from '../saved-searches/saved-search-alerts.service';
 import { StorageService } from '../storage/storage.service';
 import { toPublicProfile, userInclude } from '../users/user.mapper';
 import { CreateRoomDto, SearchRoomsDto, UpdateRoomDto } from './dto';
@@ -69,6 +71,8 @@ export class RoomsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
+    private readonly geo: GeoService,
+    private readonly savedSearchAlerts: SavedSearchAlertsService,
   ) {}
 
   async create(user: User, dto: CreateRoomDto) {
@@ -80,7 +84,11 @@ export class RoomsService {
       throw new ConflictException('You can list only one room. Edit your existing listing instead.');
     }
 
-    const pin = coordsForLocality(dto.locality);
+    const pin = await resolveCoordinates({
+      exactAddress: dto.exactAddress,
+      locality: dto.locality,
+      city: 'Bengaluru',
+    });
     const accommodation = await this.prisma.accommodation.create({
       data: {
         ownerUserId: user.id,
@@ -110,7 +118,17 @@ export class RoomsService {
       },
       include: { rooms: { include: roomInclude } },
     });
-    return toPublicRoom(accommodation.rooms[0] as never);
+    const room = accommodation.rooms[0];
+    await this.geo.syncLocation('Accommodation', accommodation.id, pin?.lat ?? null, pin?.lng ?? null);
+    void this.savedSearchAlerts.notifyRoomCreated({
+      id: room.id,
+      locality: accommodation.locality,
+      roommateContribution: accommodation.roommateContribution,
+      roomType: room.roomType,
+      notes: room.notes,
+      ownerUserId: user.id,
+    });
+    return toPublicRoom(room as never);
   }
 
   async mine(user: User) {
@@ -136,7 +154,11 @@ export class RoomsService {
     if (!room) throw new NotFoundException('Room not found');
     if (room.accommodation.ownerUserId !== user.id) throw new ForbiddenException();
 
-    const pin = coordsForLocality(dto.locality);
+    const pin = await resolveCoordinates({
+      exactAddress: dto.exactAddress ?? room.accommodation.exactAddress,
+      locality: dto.locality,
+      city: room.accommodation.city,
+    });
     await this.prisma.accommodation.update({
       where: { id: room.accommodationId },
       data: {
@@ -152,6 +174,7 @@ export class RoomsService {
         sharingPermission: dto.sharingPermission,
       },
     });
+    await this.geo.syncLocation('Accommodation', room.accommodationId, pin?.lat ?? null, pin?.lng ?? null);
     await this.prisma.room.update({
       where: { id },
       data: {

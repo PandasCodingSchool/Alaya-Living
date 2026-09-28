@@ -1,8 +1,10 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PgBedStatus, PgGenderPolicy, PgSharingType, Prisma, PropertyType, SharingPermission, User, UserRole } from '@prisma/client';
-import { coordsForLocality } from '../lib/geo';
+import { GeoService } from '../geo/geo.service';
+import { resolveCoordinates } from '../lib/geocode';
 import { publicMediaUrl } from '../lib/media-url';
 import { PrismaService } from '../prisma/prisma.service';
+import { SavedSearchAlertsService } from '../saved-searches/saved-search-alerts.service';
 import { StorageService } from '../storage/storage.service';
 import { UsersService } from '../users/users.service';
 import { toPublicProfile, userInclude } from '../users/user.mapper';
@@ -29,6 +31,7 @@ const pgInclude = {
   owner: { include: userInclude },
   sharingOptions: true,
   beds: { orderBy: [{ sortOrder: 'asc' }, { roomLabel: 'asc' }, { bedLabel: 'asc' }] },
+  verifications: { where: { status: 'APPROVED', kind: 'PROPERTY' }, take: 1, select: { id: true } },
 } satisfies Prisma.PgListingInclude;
 
 type PgWithOwner = Prisma.PgListingGetPayload<{ include: typeof pgInclude }>;
@@ -67,6 +70,7 @@ export function toPublicPg(pg: PgWithOwner) {
     latitude: pg.latitude,
     longitude: pg.longitude,
     status: pg.status,
+    propertyVerified: (pg.verifications?.length ?? 0) > 0,
     owner: toPublicProfile(pg.owner),
   };
 }
@@ -77,6 +81,8 @@ export class PgsService {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly users: UsersService,
+    private readonly geo: GeoService,
+    private readonly savedSearchAlerts: SavedSearchAlertsService,
   ) {}
 
   async list(query: { locality?: string; minBudget?: number; maxBudget?: number; gender?: PgGenderPolicy }) {
@@ -195,7 +201,11 @@ export class PgsService {
     },
   ) {
     const inventory = this.resolveInventory(dto);
-    const pin = coordsForLocality(dto.locality);
+    const pin = await resolveCoordinates({
+      exactAddress: dto.exactAddress,
+      locality: dto.locality,
+      city: 'Bengaluru',
+    });
     const row = await this.prisma.pgListing.create({
       data: {
         ownerUserId: user.id,
@@ -221,6 +231,16 @@ export class PgsService {
       },
       include: pgInclude,
     });
+    await this.geo.syncLocation('PgListing', row.id, pin?.lat ?? null, pin?.lng ?? null);
+    void this.savedSearchAlerts.notifyPgCreated({
+      id: row.id,
+      title: row.title,
+      locality: row.locality,
+      monthlyRent: row.monthlyRent,
+      genderPolicy: row.genderPolicy,
+      notes: row.notes,
+      ownerUserId: user.id,
+    });
     await this.users.ensurePgOwner(user.id);
     return toPublicPg(row);
   }
@@ -230,7 +250,11 @@ export class PgsService {
     if (!row) throw new NotFoundException('PG not found');
     if (row.ownerUserId !== user.id) throw new ForbiddenException();
     const inventory = this.resolveInventory(dto);
-    const pin = coordsForLocality(dto.locality);
+    const pin = await resolveCoordinates({
+      exactAddress: dto.exactAddress ?? row.exactAddress,
+      locality: dto.locality,
+      city: row.city,
+    });
     await this.prisma.pgBed.deleteMany({ where: { pgListingId: id } });
     await this.prisma.pgSharingOption.deleteMany({ where: { pgListingId: id } });
     const updated = await this.prisma.pgListing.update({
@@ -258,6 +282,7 @@ export class PgsService {
       },
       include: pgInclude,
     });
+    await this.geo.syncLocation('PgListing', updated.id, pin?.lat ?? null, pin?.lng ?? null);
     return toPublicPg(updated);
   }
 

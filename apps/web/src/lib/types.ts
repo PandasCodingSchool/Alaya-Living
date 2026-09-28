@@ -24,6 +24,9 @@ export interface Profile {
   intent: string | null;
   phoneVerified: boolean;
   emailVerified?: boolean;
+  identityVerified?: boolean;
+  employmentVerified?: boolean;
+  propertyVerified?: boolean;
   completion: number;
   localities: string[];
   languages: string[];
@@ -166,6 +169,7 @@ export interface FlatListing {
   notes?: string | null;
   availableFrom: string;
   status?: string;
+  propertyVerified?: boolean;
   listedBy: Profile | null;
 }
 
@@ -233,7 +237,16 @@ export interface PgListing {
   notes?: string | null;
   availableFrom: string;
   status?: string;
+  propertyVerified?: boolean;
   owner: Profile;
+}
+
+export interface AddressAccess {
+  allowed: boolean;
+  reason: 'NOT_MATCHED' | null;
+  exactAddress: string | null;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface ContactAccess {

@@ -7,6 +7,7 @@ import {
   UserRole,
   UserStatus,
 } from '@prisma/client';
+import { KycService } from '../kyc/kyc.service';
 import { MembershipService } from '../membership/membership.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { toPublicProfile, userInclude } from '../users/user.mapper';
@@ -58,7 +59,16 @@ export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly membership: MembershipService,
+    private readonly kyc: KycService,
   ) {}
+
+  listVerifications() {
+    return this.kyc.listPending();
+  }
+
+  reviewVerification(id: string, approve: boolean, adminNotes?: string) {
+    return this.kyc.review(id, approve, adminNotes);
+  }
 
   async dashboard() {
     const now = new Date();

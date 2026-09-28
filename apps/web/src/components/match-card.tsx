@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { BadgeCheck, Briefcase, MapPin, Moon, Wallet } from 'lucide-react';
+import { Briefcase, MapPin, Moon, Wallet } from 'lucide-react';
+import { VerificationBadges } from '@/components/verification-badges';
 import { useAuth } from '@/lib/auth';
 import type { Profile } from '@/lib/types';
 import { hourLabel, inr } from '@/lib/format';
@@ -49,11 +50,7 @@ export function MatchCard({ person }: { person: Profile }) {
             <span className="chip"><Moon className="mr-1 h-3 w-3" />{hourLabel(person.sleepStart)}</span>
           )}
         </div>
-        {person.phoneVerified && (
-          <p className="mt-3 flex items-center gap-1 text-[11px] font-semibold text-forest">
-            <BadgeCheck className="h-3.5 w-3.5" /> Phone verified
-          </p>
-        )}
+        <VerificationBadges profile={person} compact />
         {person.compatibility && <Reasons reasons={person.compatibility.reasons} />}
         <Link href={`/people/${person.id}`} className="btn-ghost mt-5 w-full">
           View why you match
